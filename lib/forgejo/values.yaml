@@ -25,7 +25,7 @@ ingress:
   enabled: true
   className: "nginx"
   # Host is set via --set ingress.hosts[0].host=...
-  # TLS is conditionally added via --set flags when USE_TLS=true
+  # TLS is always enabled via --set flags
 
 gitea:
   additionalConfigFromEnvs:

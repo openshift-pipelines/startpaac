@@ -12,15 +12,12 @@ forge_secret_name=forge-tls
 
 kubectl create namespace ${NS} 2>/dev/null || true
 
-# Build TLS args conditionally
-HELM_TLS_ARGS=()
-if [[ ${USE_TLS:-true} == "true" ]]; then
-  create_tls_secret $FORGE_HOST ${forge_secret_name} ${NS}
-  HELM_TLS_ARGS=(
-    --set "ingress.tls[0].hosts[0]=${FORGE_HOST}"
-    --set "ingress.tls[0].secretName=${forge_secret_name}"
-  )
-fi
+# Create TLS secret and configure Helm args
+create_tls_secret $FORGE_HOST ${forge_secret_name} ${NS}
+HELM_TLS_ARGS=(
+  --set "ingress.tls[0].hosts[0]=${FORGE_HOST}"
+  --set "ingress.tls[0].secretName=${forge_secret_name}"
+)
 
 helm uninstall forgejo -n ${NS} >/dev/null 2>&1 || true
 helm install --wait -f ${fpath}/values.yaml \

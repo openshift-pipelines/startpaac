@@ -26,7 +26,7 @@ else
   }
 fi
 
-# Note: check_tools() is called later after argument parsing to respect CI_MODE and USE_TLS flags
+# Note: check_tools() is called later after argument parsing to respect CI_MODE flag
 
 [[ -n "$*" && "${*}" == *\ local ]] && TARGET_HOST=local
 
@@ -55,23 +55,6 @@ FORCE_INTERACTIVE=${FORCE_INTERACTIVE:-"false"}
 # CI mode settings
 CI_MODE=${CI_MODE:-"false"}
 export CI_MODE
-
-# USE_TLS: empty string or "false" means no TLS, "true" means TLS
-# In CI mode, default to no TLS unless explicitly set
-if [[ -z ${USE_TLS+x} ]]; then
-  # USE_TLS not set at all - use defaults based on CI_MODE
-  if [[ ${CI_MODE} == "true" ]]; then
-    USE_TLS="false"
-  else
-    USE_TLS="true"
-  fi
-elif [[ -z ${USE_TLS} ]]; then
-  # USE_TLS set to empty string - treat as false
-  USE_TLS="false"
-fi
-
-# Export USE_TLS so child scripts can see it
-export USE_TLS
 
 if [[ ${TARGET_HOST} == local ]]; then
   KO_EXTRA_FLAGS=(--insecure-registry)
@@ -108,11 +91,7 @@ show_config() {
   elif [[ -n ${PAC_SECRET_FOLDER:-""} ]]; then
     smee_url=$(cat ${PAC_SECRET_FOLDER}/smee)
   fi
-  if [[ ${USE_TLS} == "true" ]]; then
-    protocol="https"
-  else
-    protocol="http"
-  fi
+  protocol="https"
   cat <<EOF
 Using configuration on ${TARGET_HOST}:
 
@@ -209,11 +188,7 @@ install_dashboard() {
   show_step "Deploying Tekton Dashboard"
   release_yaml=$(cache_yaml_file dashboard https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml)
   kubectl apply --filename "${release_yaml}" >/dev/null
-  if [[ ${USE_TLS} == "true" ]]; then
-    create_ingress tekton-pipelines tekton-dashboard ${DASHBOARD} 9097
-  else
-    create_ingress_http tekton-pipelines tekton-dashboard ${DASHBOARD} 9097
-  fi
+  create_ingress tekton-pipelines tekton-dashboard ${DASHBOARD} 9097
 }
 
 stop_kind() {
@@ -313,11 +288,7 @@ configure_pac() {
   show_step "Configuring PAC"
   [[ -n ${1:-} && ${1} == "--no-ingress" ]] && no_ingress=yes
   if [[ -z ${no_ingress} ]]; then
-    if [[ ${USE_TLS} == "true" ]]; then
-      create_ingress pipelines-as-code pipelines-as-code-controller "${PAAC}" 8080
-    else
-      create_ingress_http pipelines-as-code pipelines-as-code-controller "${PAAC}" 8080
-    fi
+    create_ingress pipelines-as-code pipelines-as-code-controller "${PAAC}" 8080
   fi
   patch_configmap "${PAC_CONTROLLER_TARGET_NS}"
 
@@ -368,12 +339,7 @@ function start_user_gosmee() {
   local service=${1:-"gosmee"}
   local smeeurl=${2:-}
   local controllerURL=${3:-}
-  local protocol
-  if [[ ${USE_TLS} == "true" ]]; then
-    protocol="https"
-  else
-    protocol="http"
-  fi
+  local protocol="https"
   type -p systemctl >/dev/null 2>/dev/null && return
   [[ -e ${HOME}/.config/systemd/user/${service}.service ]] || {
     if [[ -n ${smeeurl} ]]; then
@@ -459,11 +425,7 @@ EOF
   fi
 
   show_step "Creating ingress for ${pac_controller_label} controller"
-  if [[ ${USE_TLS} == "true" ]]; then
-    create_ingress ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
-  else
-    create_ingress_http ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
-  fi
+  create_ingress ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
   kubectl delete deployment -n ${PAC_CONTROLLER_TARGET_NS} gosmee-${pac_controller_label} 2>/dev/null || true
   start_user_gosmee ghe ${pac_controller_smee_url} "${gosmeeTargetURL}"
 }
@@ -693,15 +655,14 @@ show_selected_components() {
 }
 
 function parse_args() {
-  # Pre-parse for --ci and --no-tls/--http to set flags before check_tools()
+  # Pre-parse for --ci to set flag before check_tools()
   for arg in "$@"; do
     case "$arg" in
       --ci) CI_MODE="true" ;;
-      --no-tls|--http) USE_TLS="false" ;;
     esac
   done
 
-  # Now check tools with correct CI_MODE and USE_TLS values
+  # Now check tools with correct CI_MODE value
   if ! check_tools; then
     exit 1
   fi
@@ -742,8 +703,6 @@ function parse_args() {
     interactive,
     reset-preferences,
     ci,
-    no-tls,
-    http,
     kind
     " -- "$@")
   #shellcheck disable=SC2181
@@ -912,9 +871,6 @@ function parse_args() {
     --ci) # Non-interactive CI mode (skips gum, uses TLS with minica)
       CI_MODE="true"
       FORCE_INTERACTIVE="false"
-      ;;
-    --no-tls | --http) # Use HTTP instead of HTTPS (skip TLS/minica)
-      USE_TLS="false"
       ;;
     -R | --reset-preferences) # Reset saved component preferences
       reset_preferences

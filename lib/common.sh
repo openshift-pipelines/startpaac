@@ -124,35 +124,6 @@ spec:
 EOF
 }
 
-create_ingress_http() {
-  local namespace=$1
-  local component=$2
-  local host=$3
-  local targetPort=$4
-
-  echo "Creating HTTP ingress on $(echo_color brightgreen "http://${host}") for ${component}:${targetPort} in ${namespace}"
-  kubectl apply -f - <<EOF
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: "${component}"
-  namespace: "${namespace}"
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: "${host}"
-      http:
-        paths:
-          - pathType: ImplementationSpecific
-            backend:
-              service:
-                name: "${component}"
-                port:
-                  number: ${targetPort}
-EOF
-}
-
 generate_certs_minica() {
   local domain="$1"
   [[ -e ${CERT_DIR}/${domain}/cert.pem ]] && return 0
@@ -241,10 +212,8 @@ check_tools() {
     tools+=("gum")
   fi
 
-  # Only require minica if using TLS
-  if [[ ${USE_TLS:-true} == "true" ]]; then
-    tools+=("minica")
-  fi
+  # minica is required for TLS certificate generation
+  tools+=("minica")
 
   # Only require ssh/scp for remote targets
   if [[ ${TARGET_HOST:-local} != "local" ]]; then
