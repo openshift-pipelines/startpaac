@@ -363,10 +363,7 @@ function install_github_second_ctrl() {
   local pac_controller_label="ghe" pac_controller_smee_url
   local pac_controller_secret=${pac_controller_label}-secret
   local pac_controller_configmap=${pac_controller_label}-configmap
-  local gosmeeTargetURL=${pac_controller_label}.${DOMAIN_NAME}
-  if [[ ${DOMAIN_NAME} == "local" ]]; then
-    gosmeeTargetURL=${pac_controller_label}.127.0.0.1.nip.io
-  fi
+  local gosmeeTargetURL=${pac_controller_label}.${PAAC_DOMAIN}
   show_step "Installing GHE second controller for github"
 
   [[ -z ${PAC_PASS_SECOND_FOLDER:-} && -z ${PAC_SECOND_SECRET_FOLDER:-} ]] && {
@@ -462,6 +459,11 @@ all() {
   [[ ${INSTALL_FORGE} == "true" ]] && install_forgejo ${FORGE_HOST}
   [[ ${INSTALL_POSTGRESQL} == "true" ]] && install_postgresql
   [[ -n ${INSTALL_CUSTOM_OBJECT:-} && ${INSTALL_CUSTOM_OBJECT_ENABLED} == "true" ]] && install_custom_objects
+
+  # In CI mode, auto-enable second controller if secrets are present
+  if [[ ${CI_MODE} == "true" ]] && [[ -n ${PAC_SECOND_SECRET_FOLDER:-} ]] && [[ -e ${PAC_SECOND_SECRET_FOLDER}/github-application-id ]]; then
+    INSTALL_GITHUB_SECOND_CTRL=true
+  fi
   [[ ${INSTALL_GITHUB_SECOND_CTRL} == "true" ]] && install_github_second_ctrl
 
   start_user_gosmee gosmee
