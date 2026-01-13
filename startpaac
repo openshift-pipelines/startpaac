@@ -390,7 +390,6 @@ function install_github_second_ctrl() {
     PAC_CONTROLLER_SECRET=${pac_controller_secret} \
     PAC_CONTROLLER_CONFIGMAP=${pac_controller_configmap} \
     PAC_CONTROLLER_TARGET_NS=${PAC_CONTROLLER_TARGET_NS} \
-    PAC_CONTROLLER_SMEE_URL=${pac_controller_smee_url} \
     PAC_CONTROLLER_IMAGE="ko" \
     hack/second-controller.py ${pac_controller_label} |
     tee /tmp/.second.controller.debug.yaml |
