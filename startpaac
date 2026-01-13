@@ -417,7 +417,6 @@ Or have nothing and install the secrets manually after running the startpaac scr
 EOF
   fi
 
-  set -x
   show_step "Creating ingress for ${pac_controller_label} controller"
   create_ingress ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
   kubectl delete deployment -n ${PAC_CONTROLLER_TARGET_NS} gosmee-${pac_controller_label} || true
