@@ -32,6 +32,7 @@ fi
 
 TARGET_HOST=${TARGET_HOST:-}
 DOMAIN_NAME=${DOMAIN_NAME:-""}
+PAAC_DOMAIN=${PAAC_DOMAIN:-""}
 PAAC=${PAAC:-""}
 REGISTRY=${REGISTRY:-""}
 KO_EXTRA_FLAGS=${KO_EXTRA_FLAGS:-""}
@@ -67,10 +68,12 @@ if [[ ${TARGET_HOST} == local ]]; then
   DASHBOARD=dashboard.${PAAC_DOMAIN}
   PAAC=paac.${PAAC_DOMAIN}
 fi
+
 [[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAAC} ]] && {
   echo "Need to set DOMAIN_NAME, TARGET_HOST, TARGET_BIND_IP, REGISTRY, DASHBOARD and PAAC in your $HOME/.config/startpaac/config"
   exit 1
 }
+[[ -n ${DOMAIN_NAME} && -z ${PAAC_DOMAIN} ]] && PAAC_DOMAIN=${DOMAIN_NAME}
 
 TMPFILE=$(mktemp /tmp/.startpaac.XXXXXX)
 # shellcheck disable=SC2317
@@ -419,7 +422,7 @@ EOF
 
   show_step "Creating ingress for ${pac_controller_label} controller"
   create_ingress ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
-  kubectl delete deployment -n ${PAC_CONTROLLER_TARGET_NS} gosmee-${pac_controller_label} || true
+  (kubectl delete deployment -n ${PAC_CONTROLLER_TARGET_NS} gosmee-${pac_controller_label} 2>&1 | grep -v "not found") || true
   if [[ ${CI_MODE} != "true" ]]; then
     start_user_gosmee ghe ${pac_controller_smee_url} "${gosmeeTargetURL}"
   fi
