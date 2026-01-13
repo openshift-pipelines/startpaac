@@ -268,9 +268,6 @@ patch_configmap() {
   local target_ns=${1:-pipelines-as-code}
   local configmap=${2:-pipelines-as-code}
   local kind_url="http://${DASHBOARD}"
-  kubectl patch configmap -n "${target_ns}" \
-    -p '{"data":{"catalog-1-type": "artifacthub", "catalog-1-id": "pachub", "catalog-1-name": "pipelines-as-code", "catalog-1-url": "https://artifacthub.io"}}' \
-    --type merge pipelines-as-code
   kubectl patch configmap -n "${target_ns}" -p \
     "{\"data\":{\"bitbucket-cloud-check-source-ip\": \"false\"}}" \
     --type merge "${configmap}"
