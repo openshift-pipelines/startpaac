@@ -418,10 +418,12 @@ Or have nothing and install the secrets manually after running the startpaac scr
 EOF
   fi
 
-  show_step "Creating ingress for ${pac_controller_label} controller"
-  create_ingress ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
-  kubectl delete deployment -n ${PAC_CONTROLLER_TARGET_NS} gosmee-${pac_controller_label} 2>/dev/null || true
-  start_user_gosmee ghe ${pac_controller_smee_url} "${gosmeeTargetURL}"
+  if [[ ${CI_MODE} != "true" ]]; then
+    show_step "Creating ingress for ${pac_controller_label} controller"
+    create_ingress ${PAC_CONTROLLER_TARGET_NS} ${pac_controller_label}-controller "${gosmeeTargetURL}" 8080
+    kubectl delete deployment -n ${PAC_CONTROLLER_TARGET_NS} gosmee-${pac_controller_label} 2>/dev/null || true
+    start_user_gosmee ghe ${pac_controller_smee_url} "${gosmeeTargetURL}"
+  fi
 }
 
 function install_custom_objects() {
@@ -450,7 +452,10 @@ all() {
   [[ ${INSTALL_TEKTON_DASHBOARD} == "true" ]] && install_dashboard
 
   # PAC (optional)
-  [[ ${INSTALL_PAC} == "true" ]] && { install_pac; configure_pac; }
+  [[ ${INSTALL_PAC} == "true" ]] && {
+    install_pac
+    configure_pac
+  }
 
   # Other optional components
   [[ ${INSTALL_FORGE} == "true" ]] && install_forgejo ${FORGE_HOST}
@@ -519,7 +524,7 @@ save_preferences() {
       postgresql: $postgresql,
       custom_objects: $custom_objects,
       github_second_ctrl: $github_second
-    }' > "${PREFERENCES_FILE}"
+    }' >"${PREFERENCES_FILE}"
 }
 
 # Delete preferences file
@@ -575,32 +580,32 @@ parse_menu_selections() {
   # Set flags based on selections
   while IFS= read -r item; do
     case "${item}" in
-      "Pipelines-as-Code (PAC)")
-        INSTALL_PAC="true"
-        ;;
-      "Tekton Triggers")
-        INSTALL_TEKTON_TRIGGERS="true"
-        ;;
-      "Tekton Chains")
-        INSTALL_TEKTON_CHAINS="true"
-        ;;
-      "Tekton Dashboard")
-        INSTALL_TEKTON_DASHBOARD="true"
-        ;;
-      "Forgejo")
-        INSTALL_FORGE="true"
-        ;;
-      "PostgreSQL")
-        INSTALL_POSTGRESQL="true"
-        ;;
-      "Custom Objects")
-        INSTALL_CUSTOM_OBJECT_ENABLED="true"
-        ;;
-      "GitHub Second Controller")
-        INSTALL_GITHUB_SECOND_CTRL="true"
-        ;;
+    "Pipelines-as-Code (PAC)")
+      INSTALL_PAC="true"
+      ;;
+    "Tekton Triggers")
+      INSTALL_TEKTON_TRIGGERS="true"
+      ;;
+    "Tekton Chains")
+      INSTALL_TEKTON_CHAINS="true"
+      ;;
+    "Tekton Dashboard")
+      INSTALL_TEKTON_DASHBOARD="true"
+      ;;
+    "Forgejo")
+      INSTALL_FORGE="true"
+      ;;
+    "PostgreSQL")
+      INSTALL_POSTGRESQL="true"
+      ;;
+    "Custom Objects")
+      INSTALL_CUSTOM_OBJECT_ENABLED="true"
+      ;;
+    "GitHub Second Controller")
+      INSTALL_GITHUB_SECOND_CTRL="true"
+      ;;
     esac
-  done <<< "${selections}"
+  done <<<"${selections}"
 }
 
 # Display the gum menu and get selections
@@ -657,7 +662,7 @@ function parse_args() {
   # Pre-parse for --ci to set flag before check_tools()
   for arg in "$@"; do
     case "$arg" in
-      --ci) CI_MODE="true" ;;
+    --ci) CI_MODE="true" ;;
     esac
   done
 
