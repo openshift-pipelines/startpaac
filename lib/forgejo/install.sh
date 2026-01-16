@@ -22,6 +22,7 @@ HELM_TLS_ARGS=(
 helm uninstall forgejo -n ${NS} >/dev/null 2>&1 || true
 helm install --wait -f ${fpath}/values.yaml \
   --replace \
+  --version 15.1.0 \
   --set "ingress.hosts[0].host=${FORGE_HOST}" \
   --set "ingress.hosts[0].paths[0].path=/" \
   --set "ingress.hosts[0].paths[0].pathType=Prefix" \
