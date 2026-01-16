@@ -63,6 +63,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # REGISTRY=registry.\${DOMAIN_NAME}
 # FORGE_HOST=gitea.\${DOMAIN_NAME}
 # TARGET_BIND_IP=192.168.1.5
+# TARGET_BIND_IP=192.168.1.5,10.0.0.5 # Comma-separated for multiple IPs
 # DASHBOARD=dashboard.\${DOMAIN_NAME}
 # PAC_DIR=\$GOPATH/src/github.com/openshift-pipelines/pac/main
 

@@ -135,7 +135,63 @@ install_kind() {
   stop_kind
   show_step "Creating kind cluster"
   local kfilename="${SP}/lib/kind/kind.yaml"
-  sed -e "s/%REGISTRY%/${REGISTRY}/" -e "s/%TARGET_BIND_IP%/${TARGET_BIND_IP}/" "${kfilename}" >"${TMPFILE}"
+
+  # Split TARGET_BIND_IP by comma to support multiple IPs
+  IFS=',' read -ra BIND_IPS <<< "${TARGET_BIND_IP}"
+
+  # Trim whitespace from each IP
+  for i in "${!BIND_IPS[@]}"; do
+    BIND_IPS[$i]=$(echo "${BIND_IPS[$i]}" | xargs)
+  done
+
+  local primary_ip="${BIND_IPS[0]}"
+
+  # Start with the base template, replacing registry and primary IP
+  sed -e "s/%REGISTRY%/${REGISTRY}/" -e "s/%TARGET_BIND_IP%/${primary_ip}/" "${kfilename}" >"${TMPFILE}"
+
+  # If there are multiple IPs, add additional port mappings
+  if [[ ${#BIND_IPS[@]} -gt 1 ]]; then
+    # Create a temporary file for the extra port mappings
+    local extra_mappings
+    extra_mappings=$(mktemp)
+    for ip in "${BIND_IPS[@]:1}"; do
+      cat >> "${extra_mappings}" <<EOF
+      - containerPort: 80
+        hostPort: 80
+        listenAddress: "${ip}"
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        listenAddress: "${ip}"
+        protocol: TCP
+      - containerPort: 32567
+        hostPort: 3000
+        listenAddress: "${ip}"
+        protocol: TCP
+EOF
+    done
+
+    # Insert the extra mappings before the containerdConfigPatches section
+    # Use gawk if available (macOS ships with BSD awk which is limited)
+    local awk_cmd="awk"
+    if command -v gawk >/dev/null 2>&1; then
+      awk_cmd="gawk"
+    fi
+
+    "${awk_cmd}" -v extra="$(cat "${extra_mappings}")" '
+      /^containerdConfigPatches:/ {
+        if (!inserted) {
+          print extra;
+          inserted=1
+        }
+        print;
+        next
+      }
+      {print}
+    ' "${TMPFILE}" > "${TMPFILE}.new"
+    mv "${TMPFILE}.new" "${TMPFILE}"
+    rm -f "${extra_mappings}"
+  fi
   case ${TARGET_HOST} in
   local)
     kind create cluster --kubeconfig "${KUBECONFIG}" --config "${TMPFILE}"
