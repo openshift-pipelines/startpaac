@@ -772,7 +772,7 @@ function parse_args() {
       all
       exit
       ;;
-    --install-registry) # Install dockerk registry
+    --install-registry) # Install docker registry
       install_registry
       exit
       ;;
