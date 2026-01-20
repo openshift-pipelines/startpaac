@@ -265,36 +265,61 @@ stop_kind() {
 }
 
 install_pac() {
-  tmppac=$(mktemp /tmp/.pac.config.XXXXXX)
-  # shellcheck disable=SC2317
-  __clean() { rm -f "${tmppac}"; }
-  trap __clean EXIT
+  # If no arguments, deploy all components
+  if [[ $# -eq 0 ]]; then
+    set -- controller watcher webhook
+  fi
 
-  if [[ -n ${1:-""} ]]; then
-    show_step "Deploying PAC $1"
-  else
-    show_step "Deploying PAC"
+  local temp_files=()
+  local extras_file=""
+  # shellcheck disable=SC2317
+  cleanup_temp_files() {
+    for f in "${temp_files[@]}"; do
+      rm -f "${f}"
+    done
+    [[ -n "${extras_file:-}" ]] && rm -f "${extras_file}"
+  }
+  trap cleanup_temp_files EXIT
+
+  # Ensure namespace exists before applying components
+  kubectl create namespace pipelines-as-code --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+
+  # Loop through all provided components, resolve and deploy
+  for component in "$@"; do
+    local c=config
+    case ${component} in
+    controller)
+      c=${c}/400-controller.yaml
+      ;;
+    watcher)
+      c=${c}/500-watcher.yaml
+      ;;
+    webhook)
+      c=${c}/600-webhook.yaml
+      ;;
+    *)
+      echo "Unknown component: ${component}. Valid components are: controller, watcher, webhook"
+      continue
+      ;;
+    esac
+    show_step "Deploying PAC ${component}"
+    tmppac=$(mktemp /tmp/.pac.config.XXXXXX)
+    temp_files+=("${tmppac}")
+    env KO_DOCKER_REPO="${REGISTRY}" ko resolve -f"${c}" -B --sbom=none "${KO_EXTRA_FLAGS[@]}" >"${tmppac}"
+    if [[ -n ${PAC_IMAGE_NONROOT} && "${PAC_IMAGE_NONROOT}" == false ]]; then
+      sed -i 's/^\(\s*runAsNonRoot:\) true/\1 false/' "${tmppac}"
+    fi
+    echo "Resolved config from: ${c}"
+    kubectl apply -f "${tmppac}"
+  done
+
+  # Deploy extras once (after components are resolved) - no deployment message
+  if [[ -e "${PAC_DIR}/pkg/test/nonoai/deployment.yaml" ]]; then
+    show_step "Resolving PAC extras (nonoai)"
+    extras_file=$(mktemp /tmp/.pac.extras.XXXXXX)
+    env KO_DOCKER_REPO="${REGISTRY}" ko resolve -f "${PAC_DIR}/pkg/test/nonoai/deployment.yaml" -B --sbom=none "${KO_EXTRA_FLAGS[@]}" >"${extras_file}"
+    kubectl apply -f "${extras_file}"
   fi
-  local c=config
-  case ${1:-""} in
-  controller)
-    c=${c}/400-controller.yaml
-    ;;
-  watcher)
-    c=${c}/500-watcher.yaml
-    ;;
-  webhook)
-    c=${c}/600-webhook.yaml
-    ;;
-  esac
-  extras=()
-  [[ -e "${PAC_DIR}/pkg/test/nonoai/deployment.yaml" ]] && extras+=(-f "${PAC_DIR}/pkg/test/nonoai/deployment.yaml")
-  env KO_DOCKER_REPO="${REGISTRY}" ko resolve -f"${c}" "${extras[@]}" -B --sbom=none "${KO_EXTRA_FLAGS[@]}" >"${tmppac}"
-  if [[ -n ${PAC_IMAGE_NONROOT} && "${PAC_IMAGE_NONROOT}" == false ]]; then
-    sed -i 's/^\(\s*runAsNonRoot:\) true/\1 false/' "${tmppac}"
-  fi
-  kubectl apply -f "${tmppac}"
-  echo "Using config from: ${c}"
 
   for controller in ${scale_down_controller}; do
     kubectl scale deployment -n pipelines-as-code -l "app.kubernetes.io/name=${controller}" --replicas=0
@@ -929,9 +954,31 @@ function parse_args() {
       show_config
       exit
       ;;
-    -c | --deploy-component) # Install a specific component
-      install_pac "$2"
-      shift
+    -c | --deploy-component) # Install specific component(s)
+      # Get the component argument (required by getopt)
+      components=("$2")
+      shift 2
+      # Collect any additional component arguments
+      # Handle both cases: args before -- separator or after
+      while [[ $# -gt 0 ]]; do
+        if [[ "$1" == "--" ]]; then
+          # End of options marker, collect everything after it
+          shift
+          while [[ $# -gt 0 ]]; do
+            components+=("$1")
+            shift
+          done
+          break
+        elif [[ "$1" =~ ^- ]]; then
+          # Next option found, stop collecting
+          break
+        else
+          # Regular argument, add to components
+          components+=("$1")
+          shift
+        fi
+      done
+      install_pac "${components[@]}"
       exit
       ;;
     --install-custom-crds) # Install custom crds
