@@ -1,7 +1,6 @@
 # 🚀 StartPAAC - All in one setup for Pipelines as Code on Kind
 
 [![ShellCheck](https://github.com/chmouel/startpaac/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/chmouel/startpaac/actions/workflows/shellcheck.yml)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 `startpaac` is a script to set up and configure [Pipelines as Code (PAC)](https://pipelinesascode.com) on a
 Kubernetes cluster using Kind. It features an interactive menu to select which
@@ -10,12 +9,14 @@ components to install, with preferences that can be saved for future runs.
 > **What is Pipelines as Code?** Pipelines as Code is a Tekton-based CI/CD system that allows you to define your pipelines as code in your source repository, triggered by GitHub/GitLab events.
 
 **Core components** (always installed):
+
 - Kind cluster
 - Nginx ingress gateway
 - Docker registry to push images to
 - Tekton Pipelines latest release
 
 **Optional components** (choose via interactive menu):
+
 - Pipelines-as-Code (PAC) using ko from your local revision
 - Tekton Dashboard
 - Tekton Triggers
@@ -28,11 +29,13 @@ components to install, with preferences that can be saved for future runs.
 ## System Requirements
 
 **Minimum**:
+
 - 4 CPU cores
 - 8GB RAM
 - 20GB available disk space
 
 **Recommended**:
+
 - 8 CPU cores
 - 16GB RAM
 - 50GB available disk space
@@ -142,6 +145,7 @@ When running `startpaac` without any arguments, you'll be presented with an inte
 ```
 
 The menu allows you to choose from:
+
 - **Pipelines-as-Code (PAC)** - Install and configure PAC (default: on)
 - **Tekton Triggers** - Event triggering for Tekton
 - **Tekton Chains** - Supply chain security for Tekton
@@ -270,7 +274,6 @@ global:
       database: "mydatabase"
 ```
 
-
 ## Secrets Management
 
 ### Using `pass`
@@ -359,6 +362,7 @@ Run without arguments to get an interactive menu:
 ```
 
 This will:
+
 1. Show you the current configuration
 2. Present a multi-select menu of optional components
 3. Ask if you want to save your preferences
@@ -471,13 +475,14 @@ You can configure the PAC installation with the following options:
 - `--show-config`: Show the PAC configuration.
 - `--apply-non-root`: Apply non-root configuration to the PAC controller.
 
-
 ## ZSH Completion
 
 There is a [ZSH completion script](./misc/_startpaac) that can get installed in your
 
 path for completion.
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 ## Author
 
-Chmouel Boudjnah <chmouel@chmouel.com>
+OpenShift Pipelines Team
