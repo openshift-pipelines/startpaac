@@ -137,7 +137,7 @@ install_kind() {
   local kfilename="${SP}/lib/kind/kind.yaml"
 
   # Split TARGET_BIND_IP by comma to support multiple IPs
-  IFS=',' read -ra BIND_IPS <<< "${TARGET_BIND_IP}"
+  IFS=',' read -ra BIND_IPS <<<"${TARGET_BIND_IP}"
 
   # Trim whitespace from each IP
   for i in "${!BIND_IPS[@]}"; do
@@ -155,7 +155,7 @@ install_kind() {
     local extra_mappings
     extra_mappings=$(mktemp)
     for ip in "${BIND_IPS[@]:1}"; do
-      cat >> "${extra_mappings}" <<EOF
+      cat >>"${extra_mappings}" <<EOF
       - containerPort: 80
         hostPort: 80
         listenAddress: "${ip}"
@@ -188,7 +188,7 @@ EOF
         next
       }
       {print}
-    ' "${TMPFILE}" > "${TMPFILE}.new"
+    ' "${TMPFILE}" >"${TMPFILE}.new"
     mv "${TMPFILE}.new" "${TMPFILE}"
     rm -f "${extra_mappings}"
   fi
@@ -445,6 +445,10 @@ function install_github_second_ctrl() {
     pac_controller_smee_url=$(cat ${PAC_SECOND_SECRET_FOLDER}/smee)
   fi
 
+  type -p uv 2>/dev/null || {
+    echo "Installing uv tool to generate second controller yaml"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+  }
   env PAC_CONTROLLER_LABEL=${pac_controller_label} \
     PAC_CONTROLLER_SECRET=${pac_controller_secret} \
     PAC_CONTROLLER_CONFIGMAP=${pac_controller_configmap} \
