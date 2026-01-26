@@ -45,5 +45,5 @@ gitea:
     queue:
       TYPE: level
     webhook:
-      ALLOWED_HOST_LIST: private
+      ALLOWED_HOST_LIST: private,*
       SKIP_TLS_VERIFY: true
