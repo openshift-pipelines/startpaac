@@ -1,0 +1,19 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: test
+  annotations:
+    pipelinesascode.tekton.dev/on-target-branch: main
+    pipelinesascode.tekton.dev/on-event: pull_request
+spec:
+  pipelineSpec:
+    tasks:
+      - name: noop-task
+        displayName: Task with no effect
+        taskSpec:
+          steps:
+            - name: noop-task
+              image: registry.access.redhat.com/ubi9/ubi-micro
+              script: |
+                exit 0
