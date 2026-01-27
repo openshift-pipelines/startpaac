@@ -372,6 +372,55 @@ EOF
   fi
 }
 
+configure_pac_custom_certs() {
+  local ns=${PAC_CONTROLLER_TARGET_NS:-pipelines-as-code}
+  local ca_file="${CERT_DIR}/minica.pem"
+  local cm_name="pac-custom-certs"
+
+  # Check if minica CA exists
+  if [[ ! -f "${ca_file}" ]]; then
+    echo "No minica CA found at ${ca_file}, skipping custom cert configuration"
+    return 0
+  fi
+
+  show_step "Configuring PAC with minica CA"
+
+  # Create/update ConfigMap with minica CA
+  kubectl delete configmap ${cm_name} -n ${ns} 2>/dev/null || true
+  kubectl create configmap ${cm_name} -n ${ns} --from-file=ca.crt="${ca_file}"
+
+  # Patch all PAC deployments to mount the CA and set SSL_CERT_DIR
+  for deployment in pipelines-as-code-controller pipelines-as-code-watcher pipelines-as-code-webhook; do
+    kubectl patch deployment ${deployment} -n ${ns} --type=json -p='[
+      {
+        "op": "add",
+        "path": "/spec/template/spec/volumes/-",
+        "value": {
+          "name": "pac-custom-certs",
+          "configMap": {
+            "name": "pac-custom-certs"
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/spec/template/spec/containers/0/volumeMounts/-",
+        "value": {
+          "name": "pac-custom-certs",
+          "mountPath": "/pac-custom-certs",
+          "readOnly": true
+        }
+      }
+    ]' 2>/dev/null || true
+
+    kubectl set env deployment ${deployment} -n ${ns} \
+      SSL_CERT_DIR=/pac-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs:/system/etc/security/cacerts
+  done
+
+  echo "Waiting for PAC controller to restart..."
+  kubectl rollout status deployment/pipelines-as-code-controller -n ${ns} --timeout=60s
+}
+
 function install_forgejo() {
   show_step "Installing Forgejo"
   "${SP}"/lib/forgejo/install.sh ${1}
@@ -517,6 +566,7 @@ all() {
   [[ ${INSTALL_PAC} == "true" ]] && {
     install_pac
     configure_pac
+    configure_pac_custom_certs
   }
 
   # Other optional components
@@ -914,6 +964,7 @@ function parse_args() {
     -p | --install-paac) # Deploy and configure PAC
       install_pac
       configure_pac
+      configure_pac_custom_certs
       exit
       ;;
     -k | --kind) # Install Kind
