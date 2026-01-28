@@ -281,10 +281,23 @@ install_pac() {
   }
   trap cleanup_temp_files EXIT
 
-  # Ensure namespace exists before applying components
-  kubectl create namespace pipelines-as-code --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+  # Deploy base configuration first (namespace, roles, CRDs, configmaps, etc.)
+  # These are the 1xx-3xx files that all components depend on
+  show_step "Deploying PAC base configuration"
+  local base_config
+  base_config=$(mktemp /tmp/.pac.base.XXXXXX)
+  temp_files+=("${base_config}")
 
-  # Loop through all provided components, resolve and deploy
+  local base_files=()
+  set +f
+  for f in config/[1-3]*.yaml; do
+    [[ -f "${f}" ]] && base_files+=("-f" "${f}")
+  done
+  set -f
+
+  env KO_DOCKER_REPO="${REGISTRY}" ko resolve "${base_files[@]}" -B --sbom=none "${KO_EXTRA_FLAGS[@]}" >"${base_config}"
+  kubectl apply -f "${base_config}"
+
   for component in "$@"; do
     local c=config
     case ${component} in
@@ -313,7 +326,6 @@ install_pac() {
     kubectl apply -f "${tmppac}"
   done
 
-  # Deploy extras once (after components are resolved) - no deployment message
   if [[ -e "${PAC_DIR}/pkg/test/nonoai/deployment.yaml" ]]; then
     show_step "Resolving PAC extras (nonoai)"
     extras_file=$(mktemp /tmp/.pac.extras.XXXXXX)
