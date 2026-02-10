@@ -67,6 +67,18 @@ if [[ ${TARGET_HOST} == local ]]; then
   TARGET_BIND_IP=127.0.0.1
   DASHBOARD=dashboard.${PAAC_DOMAIN}
   PAAC=paac.${PAAC_DOMAIN}
+  # Default to NodePort webhook for local mode
+  USE_NODEPORT_WEBHOOK=${USE_NODEPORT_WEBHOOK:-true}
+else
+  USE_NODEPORT_WEBHOOK=${USE_NODEPORT_WEBHOOK:-false}
+fi
+
+# NodePort configuration for direct webhook delivery
+PAC_WEBHOOK_NODEPORT=${PAC_WEBHOOK_NODEPORT:-30080}
+if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
+  PAAC_WEBHOOK_URL="http://${TARGET_BIND_IP:-127.0.0.1}:${PAC_WEBHOOK_NODEPORT}"
+else
+  PAAC_WEBHOOK_URL="https://${PAAC}"
 fi
 
 [[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAAC} ]] && {
@@ -104,9 +116,15 @@ PAAC: ${protocol}://${PAAC}
 REGISTRY: ${protocol}://${REGISTRY}
 FORGE_HOST: ${protocol}://${FORGE_HOST}
 DASHBOARD: ${protocol}://${DASHBOARD}
+EOF
+  if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
+    echo "PAAC WEBHOOK: ${PAAC_WEBHOOK_URL} (NodePort - no gosmee needed)"
+  else
+    cat <<EOF
   GOSMEE:
   gosmee client --saveDir /tmp/replay ${smee_url} ${protocol}://${PAAC}
 EOF
+  fi
 }
 
 cache_yaml_file() {
@@ -166,6 +184,10 @@ install_kind() {
         protocol: TCP
       - containerPort: 32567
         hostPort: 3000
+        listenAddress: "${ip}"
+        protocol: TCP
+      - containerPort: 30080
+        hostPort: 30080
         listenAddress: "${ip}"
         protocol: TCP
 EOF
@@ -421,6 +443,18 @@ configure_pac_custom_certs() {
   kubectl rollout status deployment/pipelines-as-code-controller -n ${ns} --timeout=60s
 }
 
+function patch_pac_service_nodeport() {
+  if [[ "${USE_NODEPORT_WEBHOOK}" != "true" ]]; then
+    return
+  fi
+  show_step "Patching PAC controller service to NodePort ${PAC_WEBHOOK_NODEPORT}"
+  kubectl patch svc pipelines-as-code-controller -n pipelines-as-code \
+    --type='json' -p='[
+      {"op": "replace", "path": "/spec/type", "value": "NodePort"},
+      {"op": "add", "path": "/spec/ports/0/nodePort", "value": '${PAC_WEBHOOK_NODEPORT}'}
+    ]'
+}
+
 function install_forgejo() {
   show_step "Installing Forgejo"
   "${SP}"/lib/forgejo/install.sh ${1}
@@ -567,6 +601,7 @@ all() {
     install_pac
     configure_pac
     configure_pac_custom_certs
+    patch_pac_service_nodeport
   }
 
   # Other optional components
@@ -580,7 +615,11 @@ all() {
   fi
   [[ ${INSTALL_GITHUB_SECOND_CTRL} == "true" ]] && install_github_second_ctrl
 
-  start_user_gosmee gosmee
+  if [[ "${USE_NODEPORT_WEBHOOK}" != "true" ]]; then
+    start_user_gosmee gosmee
+  else
+    echo "NodePort webhook enabled, skipping gosmee"
+  fi
 
   show_step "Setting current namespace context to pipelines-as-code"
   set_namespace pipelines-as-code
@@ -957,14 +996,20 @@ function parse_args() {
         exit 1
       fi
       configure_pac --no-ingress
-      show_step "Creating gosmee service in namespace gosmee"
-      makeGosmee gosmee ${smee_url} http://pipelines-as-code-controller.$PAC_CONTROLLER_TARGET_NS.svc.cluster.local:8080 gosmee
+      if [[ "${USE_NODEPORT_WEBHOOK}" != "true" ]]; then
+        show_step "Creating gosmee service in namespace gosmee"
+        makeGosmee gosmee ${smee_url} http://pipelines-as-code-controller.$PAC_CONTROLLER_TARGET_NS.svc.cluster.local:8080 gosmee
+      else
+        patch_pac_service_nodeport
+        echo "NodePort webhook enabled, skipping gosmee deployment"
+      fi
       exit
       ;;
     -p | --install-paac) # Deploy and configure PAC
       install_pac
       configure_pac
       configure_pac_custom_certs
+      patch_pac_service_nodeport
       exit
       ;;
     -k | --kind) # Install Kind

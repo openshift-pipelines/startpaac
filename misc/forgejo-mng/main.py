@@ -245,8 +245,14 @@ def create_pull_request_api(
     is_flag=True,
     help="Skip TLS verification",
 )
+@click.option(
+    "--webhook-url",
+    envvar="PAC_WEBHOOK_URL",
+    default="",
+    help="Direct webhook URL (e.g., http://127.0.0.1:30080), takes precedence over smee-url",
+)
 @click.pass_context
-def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls):
+def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls, webhook_url):
     """Forgejo repository and pull request management tool."""
     ctx.ensure_object(dict)
 
@@ -288,6 +294,7 @@ def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls):
     ctx.obj["skip_tls"] = config["skip_tls"]
     ctx.obj["smee_url"] = config["smee_url"]
     ctx.obj["internal_url"] = config["internal_url"]
+    ctx.obj["webhook_url"] = webhook_url
 
 
 @cli.command("repo")
@@ -329,6 +336,9 @@ def repo_command(
     repo_owner = ctx.obj["repo_owner"]
     skip_tls = ctx.obj["skip_tls"]
 
+    # Get webhook_url from context (takes precedence over smee_url)
+    webhook_url = ctx.obj.get("webhook_url", "")
+
     # Get smee_url and internal_url from context if not provided via CLI/env
     if not smee_url and ctx.obj.get("smee_url"):
         smee_url = ctx.obj["smee_url"]
@@ -336,6 +346,9 @@ def repo_command(
         "internal_url"
     ):
         internal_url = ctx.obj["internal_url"]
+
+    # webhook_url takes precedence over smee_url
+    effective_webhook_url = webhook_url if webhook_url else smee_url
 
     # Validate required configuration
     validate_required_config(
@@ -427,9 +440,9 @@ def repo_command(
 
     click.echo(f"Repository created: {html_url}")
 
-    # Create webhook if smee URL is provided
-    if smee_url:
-        create_webhook(forgejo_url, headers, owner, repo, smee_url, verify_tls)
+    # Create webhook if webhook URL or smee URL is provided
+    if effective_webhook_url:
+        create_webhook(forgejo_url, headers, owner, repo, effective_webhook_url, verify_tls)
 
     namespace = target_ns if target_ns else repo
 
