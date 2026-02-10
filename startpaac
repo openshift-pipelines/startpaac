@@ -528,7 +528,7 @@ function install_github_second_ctrl() {
     pac_controller_smee_url=$(cat ${PAC_SECOND_SECRET_FOLDER}/smee)
   fi
 
-  type -p uv 2>/dev/null || {
+  type -p uv >/dev/null 2>&1 || {
     echo "Installing uv tool to generate second controller yaml"
     curl -LsSf https://astral.sh/uv/install.sh | sh
   }
