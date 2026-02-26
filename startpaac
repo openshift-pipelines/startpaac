@@ -311,7 +311,39 @@ install_pac() {
   esac
   extras=()
   [[ -e "${PAC_DIR}/pkg/test/nonoai/deployment.yaml" ]] && extras+=(-f "${PAC_DIR}/pkg/test/nonoai/deployment.yaml")
-  env KO_DOCKER_REPO="${REGISTRY}" ko resolve -f"${c}" "${extras[@]}" -B --sbom=none "${KO_EXTRA_FLAGS[@]}" >"${tmppac}"
+
+  # Verify registry is accessible before ko resolve
+  echo "Verifying registry ${REGISTRY} is accessible..."
+  local reg_ok=false
+  for ((i = 1; i <= 5; i++)); do
+    if curl -o/dev/null --fail -k -s "https://${REGISTRY}/v2/"; then
+      reg_ok=true
+      break
+    fi
+    echo "Registry not ready, retrying in 5s ($i/5)..."
+    sleep 5
+  done
+  if [[ ${reg_ok} != true ]]; then
+    echo "Warning: Registry ${REGISTRY} not responding, proceeding anyway..."
+  fi
+
+  # ko resolve with retry logic for intermittent registry failures
+  local ko_success=false
+  local ko_max_retries=3
+  for ((attempt = 1; attempt <= ko_max_retries; attempt++)); do
+    if env KO_DOCKER_REPO="${REGISTRY}" ko resolve -f"${c}" "${extras[@]}" -B --sbom=none "${KO_EXTRA_FLAGS[@]}" >"${tmppac}"; then
+      ko_success=true
+      break
+    fi
+    if [[ ${attempt} -lt ${ko_max_retries} ]]; then
+      echo "ko resolve failed (attempt ${attempt}/${ko_max_retries}), retrying in 15s..."
+      sleep 15
+    fi
+  done
+  if [[ ${ko_success} != true ]]; then
+    echo "ko resolve failed after ${ko_max_retries} attempts"
+    return 1
+  fi
   if [[ -n ${PAC_IMAGE_NONROOT} && "${PAC_IMAGE_NONROOT}" == false ]]; then
     sed -i 's/^\(\s*runAsNonRoot:\) true/\1 false/' "${tmppac}"
   fi
