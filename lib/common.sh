@@ -280,3 +280,40 @@ spec:
 EOF
   kubectl apply -f /tmp/${deploymentName}.yaml
 }
+
+HOOKS_DIR="${HOOKS_DIR:-${HOME}/.config/startpaac/hooks}"
+
+run_hook() {
+    local hook_name="$1"
+    local hook_path="${HOOKS_DIR}/${hook_name}"
+
+    [[ -d "${HOOKS_DIR}" ]] || return 0
+
+    local -a hook_files=()
+    if [[ -x "${hook_path}" && -f "${hook_path}" ]]; then
+        hook_files=("${hook_path}")
+    elif [[ -d "${hook_path}" ]]; then
+        while IFS= read -r f; do
+            [[ -x "$f" && -f "$f" ]] && hook_files+=("$f")
+        done < <(find "${hook_path}" -maxdepth 1 -type f | sort)
+    fi
+
+    [[ ${#hook_files[@]} -eq 0 ]] && return 0
+
+    export STARTPAAC_HOOK_NAME="${hook_name}"
+    for hook_file in "${hook_files[@]}"; do
+        local display_name="${hook_name}"
+        [[ ${#hook_files[@]} -gt 1 ]] && display_name="${hook_name}/$(basename "${hook_file}")"
+        echo_color cyan "Running hook: ${display_name}"
+        "${hook_file}"
+        echo_color green "Hook '${display_name}' completed"
+    done
+}
+
+run_with_hooks() {
+    local hook_name="$1"
+    shift
+    run_hook "pre-${hook_name}"
+    "$@"
+    run_hook "post-${hook_name}"
+}
