@@ -618,34 +618,36 @@ function set_namespace() {
 }
 
 all() {
-  sync_kubeconfig
-  install_nginx
-  install_registry
-  install_tekton
+  run_hook pre-all
+
+  run_with_hooks sync-kubeconfig sync_kubeconfig
+  run_with_hooks install-nginx install_nginx
+  run_with_hooks install-registry install_registry
+  run_with_hooks install-tekton install_tekton
 
   # Optional Tekton components
-  [[ ${INSTALL_TEKTON_TRIGGERS} == "true" ]] && install_triggers
-  [[ ${INSTALL_TEKTON_CHAINS} == "true" ]] && install_chains
-  [[ ${INSTALL_TEKTON_DASHBOARD} == "true" ]] && install_dashboard
+  [[ ${INSTALL_TEKTON_TRIGGERS} == "true" ]] && run_with_hooks install-triggers install_triggers
+  [[ ${INSTALL_TEKTON_CHAINS} == "true" ]] && run_with_hooks install-chains install_chains
+  [[ ${INSTALL_TEKTON_DASHBOARD} == "true" ]] && run_with_hooks install-dashboard install_dashboard
 
   # PAC (optional)
   [[ ${INSTALL_PAC} == "true" ]] && {
-    install_pac
-    configure_pac
-    configure_pac_custom_certs
-    patch_pac_service_nodeport
+    run_with_hooks install-pac install_pac
+    run_with_hooks configure-pac configure_pac
+    run_with_hooks configure-pac-custom-certs configure_pac_custom_certs
+    run_with_hooks patch-pac-service-nodeport patch_pac_service_nodeport
   }
 
   # Other optional components
-  [[ ${INSTALL_FORGE} == "true" ]] && install_forgejo ${FORGE_HOST}
-  [[ ${INSTALL_POSTGRESQL} == "true" ]] && install_postgresql
-  [[ -n ${INSTALL_CUSTOM_OBJECT:-} && ${INSTALL_CUSTOM_OBJECT_ENABLED} == "true" ]] && install_custom_objects
+  [[ ${INSTALL_FORGE} == "true" ]] && run_with_hooks install-forgejo install_forgejo ${FORGE_HOST}
+  [[ ${INSTALL_POSTGRESQL} == "true" ]] && run_with_hooks install-postgresql install_postgresql
+  [[ -n ${INSTALL_CUSTOM_OBJECT:-} && ${INSTALL_CUSTOM_OBJECT_ENABLED} == "true" ]] && run_with_hooks install-custom-objects install_custom_objects
 
   # In CI mode, auto-enable second controller if secrets are present
   if [[ ${CI_MODE} == "true" ]] && [[ -n ${PAC_SECOND_SECRET_FOLDER:-} ]] && [[ -e ${PAC_SECOND_SECRET_FOLDER}/github-application-id ]]; then
     INSTALL_GITHUB_SECOND_CTRL=true
   fi
-  [[ ${INSTALL_GITHUB_SECOND_CTRL} == "false" || ${INSTALL_GITHUB_SECOND_CTRL} == "" ]] || install_github_second_ctrl
+  [[ ${INSTALL_GITHUB_SECOND_CTRL} == "false" || ${INSTALL_GITHUB_SECOND_CTRL} == "" ]] || run_with_hooks install-github-second-ctrl install_github_second_ctrl
 
   if [[ "${USE_NODEPORT_WEBHOOK}" != "true" ]]; then
     start_user_gosmee gosmee
@@ -655,6 +657,8 @@ all() {
 
   show_step "Setting current namespace context to pipelines-as-code"
   set_namespace pipelines-as-code
+
+  run_hook post-all
 }
 
 function help() {

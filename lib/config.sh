@@ -42,6 +42,13 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 #
 # Install custom objects in the kind cluster after the cluster is created
 # INSTALL_CUSTOM_OBJECT=~/path/to/dir/
+#
+# HOOKS_DIR is the directory where hook scripts are loaded from.
+# Hooks are executable files named pre-<component> or post-<component>
+# (e.g., post-install-tekton) that run automatically at defined points
+# in the installation flow. A hook can be a single executable file or
+# a directory of executable files (run in sorted order).
+# HOOKS_DIR=~/.config/startpaac/hooks
 ## Hosts (not needed if TARGET_HOST is set to local)
 #
 # setup a wildcard dns *.lan.mydomain.com to go to your TARGET_HOST vm

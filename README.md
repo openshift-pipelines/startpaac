@@ -475,6 +475,62 @@ You can configure the PAC installation with the following options:
 - `--show-config`: Show the PAC configuration.
 - `--apply-non-root`: Apply non-root configuration to the PAC controller.
 
+## Hooks
+
+startpaac supports hooks — executable scripts that run automatically at defined
+points in the installation flow. This lets you customize the process (e.g.,
+apply extra K8s resources after Tekton installs, patch configs before PAC
+deploys) without forking or running scripts manually.
+
+### Hook Directory
+
+Hooks are discovered from `~/.config/startpaac/hooks/` (override via the
+`HOOKS_DIR` environment variable).
+
+### Naming Convention
+
+Hook files are named `pre-<component>` or `post-<component>`. For example:
+
+- `pre-install-tekton` — runs before Tekton is installed
+- `post-configure-pac` — runs after PAC is configured
+
+Available hook points: `all`, `sync-kubeconfig`, `install-nginx`,
+`install-registry`, `install-tekton`, `install-triggers`, `install-chains`,
+`install-dashboard`, `install-pac`, `configure-pac`,
+`configure-pac-custom-certs`, `patch-pac-service-nodeport`, `install-forgejo`,
+`install-postgresql`, `install-custom-objects`, `install-github-second-ctrl`.
+
+### Format
+
+A hook can be either:
+
+- A single executable file (e.g., `~/.config/startpaac/hooks/post-install-tekton`)
+- A directory of executable files, run in sorted order (e.g.,
+  `~/.config/startpaac/hooks/post-install-tekton/01-apply-extras`,
+  `~/.config/startpaac/hooks/post-install-tekton/02-patch-config`)
+
+### Environment
+
+All existing environment variables are inherited (`KUBECONFIG`, `TARGET_HOST`,
+`DOMAIN_NAME`, `PAC_DIR`, `CI_MODE`, etc.). Additionally,
+`STARTPAAC_HOOK_NAME` is exported with the current hook name.
+
+### Failure Behavior
+
+A non-zero exit from any hook script aborts the startpaac run.
+
+### Example
+
+```bash
+mkdir -p ~/.config/startpaac/hooks
+cat > ~/.config/startpaac/hooks/post-install-tekton <<'EOF'
+#!/bin/bash
+echo "Tekton installed — applying custom resources"
+kubectl apply -f ~/my-extra-resources/
+EOF
+chmod +x ~/.config/startpaac/hooks/post-install-tekton
+```
+
 ## ZSH Completion
 
 There is a [ZSH completion script](./misc/_startpaac) that can get installed in your
