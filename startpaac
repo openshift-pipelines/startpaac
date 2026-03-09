@@ -873,7 +873,7 @@ function parse_args() {
     help,
     install-custom-crds,
     install-dashboard,
-    install-forge,
+    install-forgejo,
     install-nginx,
     install-paac,
     install-postgresql,
@@ -908,7 +908,7 @@ function parse_args() {
       shift
       ;;
 
-    -g | --install-forge) # Install Forgejo
+    -g | --install-forgejo) # Install Forgejo
       install_forgejo ${FORGE_HOST}
       exit
       ;;
