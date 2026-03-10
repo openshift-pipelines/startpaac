@@ -1,16 +1,16 @@
-# StartPAAC Architecture
+# StartPAC Architecture
 
-This document describes the architecture and design of StartPAAC, an automated setup tool for Pipelines as Code development environments.
+This document describes the architecture and design of StartPAC, an automated setup tool for Pipelines as Code development environments.
 
 ## Overview
 
-StartPAAC is a modular Bash-based orchestration tool that automates the creation of a complete Pipelines as Code development environment on Kubernetes using Kind (Kubernetes in Docker).
+StartPAC is a modular Bash-based orchestration tool that automates the creation of a complete Pipelines as Code development environment on Kubernetes using Kind (Kubernetes in Docker).
 
 ## High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         StartPAAC CLI                           │
+│                         StartPAC CLI                           │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  Interactive Menu (gum) │ Preferences (JSON) │ Config     │  │
 │  └───────────────────────────────────────────────────────────┘  │

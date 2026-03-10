@@ -32,8 +32,8 @@ fi
 
 TARGET_HOST=${TARGET_HOST:-}
 DOMAIN_NAME=${DOMAIN_NAME:-""}
-PAAC_DOMAIN=${PAAC_DOMAIN:-""}
-PAAC=${PAAC:-""}
+PAC_DOMAIN=${PAC_DOMAIN:-""}
+PAC=${PAC:-""}
 REGISTRY=${REGISTRY:-""}
 KO_EXTRA_FLAGS=${KO_EXTRA_FLAGS:-""}
 FORGE_HOST=${FORGE_HOST:-""}
@@ -60,13 +60,13 @@ export CI_MODE
 if [[ ${TARGET_HOST} == local ]]; then
   KO_EXTRA_FLAGS=(--insecure-registry)
   DOMAIN_NAME=${TARGET_HOST}
-  # Allow domain override via PAAC_DOMAIN for CI compatibility
-  PAAC_DOMAIN=${PAAC_DOMAIN:-"127.0.0.1.nip.io"}
-  REGISTRY=registry.${PAAC_DOMAIN}
-  FORGE_HOST=gitea.${PAAC_DOMAIN}
+  # Allow domain override via PAC_DOMAIN for CI compatibility
+  PAC_DOMAIN=${PAC_DOMAIN:-"127.0.0.1.nip.io"}
+  REGISTRY=registry.${PAC_DOMAIN}
+  FORGE_HOST=gitea.${PAC_DOMAIN}
   TARGET_BIND_IP=127.0.0.1
-  DASHBOARD=dashboard.${PAAC_DOMAIN}
-  PAAC=paac.${PAAC_DOMAIN}
+  DASHBOARD=dashboard.${PAC_DOMAIN}
+  PAC=paac.${PAC_DOMAIN}
   # Default to NodePort webhook for local mode
   USE_NODEPORT_WEBHOOK=${USE_NODEPORT_WEBHOOK:-true}
 else
@@ -76,16 +76,17 @@ fi
 # NodePort configuration for direct webhook delivery
 PAC_WEBHOOK_NODEPORT=${PAC_WEBHOOK_NODEPORT:-30080}
 if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
-  PAAC_WEBHOOK_URL=${PAAC_WEBHOOK_URL:-"http://${TARGET_BIND_IP:-127.0.0.1}:${PAC_WEBHOOK_NODEPORT}"}
+  PAC_WEB_URL=${PAC_WEB_URL:-"http://${TARGET_BIND_IP:-127.0.0.1}:${PAC_WEBHOOK_NODEPORT}"}
 else
-  PAAC_WEBHOOK_URL=${PAAC_WEBHOOK_URL:-"https://${PAAC}"}
+  PAC_WEB_URL=${PAC_WEB_URL:-"https://${PAC}"}
 fi
+PAC_WEB_SECRET=${PAC_WEB_SECRET:-""}
 
-[[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAAC} ]] && {
-  echo "Need to set DOMAIN_NAME, TARGET_HOST, TARGET_BIND_IP, REGISTRY, DASHBOARD and PAAC in your $HOME/.config/startpaac/config"
+[[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAC} ]] && {
+  echo "Need to set DOMAIN_NAME, TARGET_HOST, TARGET_BIND_IP, REGISTRY, DASHBOARD and PAC in your $HOME/.config/startpaac/config"
   exit 1
 }
-[[ -n ${DOMAIN_NAME} && -z ${PAAC_DOMAIN} ]] && PAAC_DOMAIN=${DOMAIN_NAME}
+[[ -n ${DOMAIN_NAME} && -z ${PAC_DOMAIN} ]] && PAC_DOMAIN=${DOMAIN_NAME}
 
 TMPFILE=$(mktemp /tmp/.startpaac.XXXXXX)
 # shellcheck disable=SC2317
@@ -112,17 +113,17 @@ Using configuration on ${TARGET_HOST}:
 
 DOMAIN_NAME: ${DOMAIN_NAME},
 TARGET_BIND_IP: ${TARGET_BIND_IP}
-PAAC: ${protocol}://${PAAC}
+PAC: ${protocol}://${PAC}
 REGISTRY: ${protocol}://${REGISTRY}
 FORGE_HOST: ${protocol}://${FORGE_HOST}
 DASHBOARD: ${protocol}://${DASHBOARD}
 EOF
   if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
-    echo "PAAC WEBHOOK: ${PAAC_WEBHOOK_URL} (NodePort - no gosmee needed)"
+    echo "PAC WEBHOOK: ${PAC_WEB_URL} (NodePort - no gosmee needed)"
   else
     cat <<EOF
   GOSMEE:
-  gosmee client --saveDir /tmp/replay ${smee_url} ${protocol}://${PAAC}
+  gosmee client --saveDir /tmp/replay ${smee_url} ${protocol}://${PAC}
 EOF
   fi
 }
@@ -398,7 +399,7 @@ configure_pac() {
   show_step "Configuring PAC"
   [[ -n ${1:-} && ${1} == "--no-ingress" ]] && no_ingress=yes
   if [[ -z ${no_ingress} ]]; then
-    create_ingress pipelines-as-code pipelines-as-code-controller "${PAAC}" 8080
+    create_ingress pipelines-as-code pipelines-as-code-controller "${PAC}" 8080
   fi
   patch_configmap "${PAC_CONTROLLER_TARGET_NS}"
 
@@ -520,8 +521,8 @@ function setup_forgejo_sample() {
     --password "${admin_pass}" \
     --repo-owner "${admin_user}" \
     --skip-tls \
-    --webhook-url "${PAAC_WEBHOOK_URL}" \
-    --webhook-secret "${PAAC_WEBHOOK_SECRET}" \
+    --webhook-url "${PAC_WEB_URL}" \
+    --webhook-secret "${PAC_WEB_SECRET}" \
     repo "${sample_repo}" \
     --no-clone
 
@@ -532,8 +533,8 @@ function setup_forgejo_sample() {
     --password "${sample_pass}" \
     --repo-owner "${sample_user}" \
     --skip-tls \
-    --webhook-url "${PAAC_WEBHOOK_URL}" \
-    --webhook-secret "${PAAC_WEBHOOK_SECRET}" \
+    --webhook-url "${PAC_WEB_URL}" \
+    --webhook-secret "${PAC_WEB_SECRET}" \
     repo "${sample_repo}" \
     --fork-from "${admin_user}/${sample_repo}" \
     --no-clone
@@ -581,7 +582,7 @@ function install_github_second_ctrl() {
   local pac_controller_label="ghe" pac_controller_smee_url
   local pac_controller_secret=${pac_controller_label}-secret
   local pac_controller_configmap=${pac_controller_label}-configmap
-  local gosmeeTargetURL=${pac_controller_label}.${PAAC_DOMAIN}
+  local gosmeeTargetURL=${pac_controller_label}.${PAC_DOMAIN}
   show_step "Installing GHE second controller for github"
 
   [[ -z ${PAC_PASS_SECOND_FOLDER:-} && -z ${PAC_SECOND_SECRET_FOLDER:-} ]] && {

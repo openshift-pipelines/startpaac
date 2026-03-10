@@ -1,4 +1,4 @@
-# 🚀 StartPAAC - All in one setup for Pipelines as Code on Kind
+# 🚀 StartPAC - All in one setup for Pipelines as Code on Kind
 
 [![ShellCheck](https://github.com/chmouel/startpaac/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/chmouel/startpaac/actions/workflows/shellcheck.yml)
 
@@ -231,7 +231,7 @@ Create a configuration file at `$HOME/.config/startpaac/config` with the followi
 # https://nextdns.io to let you create wildcard dns for your local network.
 #
 # DOMAIN_NAME=lan.mydomain.com
-# PAAC=paac.${DOMAIN_NAME}
+# PAC=paac.${DOMAIN_NAME}
 # REGISTRY=registry.${DOMAIN_NAME}
 # FORGE_HOST=gitea.${DOMAIN_NAME}
 # DASHBOARD=dashboard.${DASHBOARD}
@@ -240,7 +240,7 @@ Create a configuration file at `$HOME/.config/startpaac/config` with the followi
 # TARGET_HOST=civuole.lan
 # KO_EXTRA_FLAGS=(--insecure-registry --platform linux/arm64)
 # DOMAIN_NAME=vm.lan
-# PAAC=paac.${DOMAIN_NAME}
+# PAC=paac.${DOMAIN_NAME}
 # REGISTRY=registry.${DOMAIN_NAME}
 # FORGE_HOST=gitea.${DOMAIN_NAME}
 # TARGET_BIND_IP=192.168.1.5
@@ -249,7 +249,7 @@ Create a configuration file at `$HOME/.config/startpaac/config` with the followi
 # PAC_DIR=$GOPATH/src/github.com/openshift-pipelines/pac/main
 ```
 
-You can have an alternative config file with the `STARTPAAC_CONFIG_FILE`
+You can have an alternative config file with the `STARTPAC_CONFIG_FILE`
 environment variable.
 
 ## PostgreSQL Configuration
@@ -513,7 +513,7 @@ A hook can be either:
 
 All existing environment variables are inherited (`KUBECONFIG`, `TARGET_HOST`,
 `DOMAIN_NAME`, `PAC_DIR`, `CI_MODE`, etc.). Additionally,
-`STARTPAAC_HOOK_NAME` is exported with the current hook name.
+`STARTPAC_HOOK_NAME` is exported with the current hook name.
 
 ### Failure Behavior
 

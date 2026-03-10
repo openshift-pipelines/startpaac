@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC1090
-CONFIG_FILE=${STARTPAAC_CONFIG_FILE:-$HOME/.config/startpaac/config}
+CONFIG_FILE=${STARTPAC_CONFIG_FILE:-$HOME/.config/startpaac/config}
 echo "Loading configuration from ${CONFIG_FILE}"
 
 if [[ -e "${CONFIG_FILE}" ]]; then
@@ -56,7 +56,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # https://nextdns.io to let you create wildcard dns for your local network.
 #
 # DOMAIN_NAME=lan.mydomain.com
-# PAAC=paac.\${DOMAIN_NAME}
+# PAC=paac.\${DOMAIN_NAME}
 # REGISTRY=registry.\${DOMAIN_NAME}
 # FORGE_HOST=gitea.\${DOMAIN_NAME}
 # DASHBOARD=dashboard.\${DASHBOARD}
@@ -66,7 +66,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # TARGET_HOST=civuole.lan
 # KO_EXTRA_FLAGS=(--insecure-registry --platform linux/arm64)
 # DOMAIN_NAME=vm.lan
-# PAAC=paac.\${DOMAIN_NAME}
+# PAC=paac.\${DOMAIN_NAME}
 # REGISTRY=registry.\${DOMAIN_NAME}
 # FORGE_HOST=gitea.\${DOMAIN_NAME}
 # TARGET_BIND_IP=192.168.1.5
