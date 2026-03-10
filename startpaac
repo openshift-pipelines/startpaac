@@ -76,9 +76,9 @@ fi
 # NodePort configuration for direct webhook delivery
 PAC_WEBHOOK_NODEPORT=${PAC_WEBHOOK_NODEPORT:-30080}
 if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
-  PAAC_WEBHOOK_URL="http://${TARGET_BIND_IP:-127.0.0.1}:${PAC_WEBHOOK_NODEPORT}"
+  PAAC_WEBHOOK_URL=${PAAC_WEBHOOK_URL:-"http://${TARGET_BIND_IP:-127.0.0.1}:${PAC_WEBHOOK_NODEPORT}"}
 else
-  PAAC_WEBHOOK_URL="https://${PAAC}"
+  PAAC_WEBHOOK_URL=${PAAC_WEBHOOK_URL:-"https://${PAAC}"}
 fi
 
 [[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAAC} ]] && {
@@ -492,6 +492,53 @@ function install_forgejo() {
   "${SP}"/lib/forgejo/install.sh ${1}
 }
 
+function setup_forgejo_sample() {
+  show_step "Setting up Forgejo sample repository and non-admin user"
+  local protocol="https"
+  local forgejo_url="${protocol}://${FORGE_HOST}"
+  local admin_user="pac"
+  local admin_pass="pac"
+  local sample_user="nonadmin"
+  local sample_pass="nonadmin"
+  local sample_repo="sample"
+
+  # Create non-admin user (authenticates as admin)
+  "${SP}"/misc/forgejo-mng/main.py \
+    --forgejo-url "${forgejo_url}" \
+    --username "${admin_user}" \
+    --password "${admin_pass}" \
+    --repo-owner "${sample_user}" \
+    --skip-tls \
+    create-user \
+    --new-username "${sample_user}" \
+    --new-password "${sample_pass}"
+
+  # Create sample repo under pac admin user first (nonadmin will fork it)
+  "${SP}"/misc/forgejo-mng/main.py \
+    --forgejo-url "${forgejo_url}" \
+    --username "${admin_user}" \
+    --password "${admin_pass}" \
+    --repo-owner "${admin_user}" \
+    --skip-tls \
+    --webhook-url "${PAAC_WEBHOOK_URL}" \
+    --webhook-secret "${PAAC_WEBHOOK_SECRET}" \
+    repo "${sample_repo}" \
+    --no-clone
+
+  # Fork admin repo as nonadmin user
+  "${SP}"/misc/forgejo-mng/main.py \
+    --forgejo-url "${forgejo_url}" \
+    --username "${sample_user}" \
+    --password "${sample_pass}" \
+    --repo-owner "${sample_user}" \
+    --skip-tls \
+    --webhook-url "${PAAC_WEBHOOK_URL}" \
+    --webhook-secret "${PAAC_WEBHOOK_SECRET}" \
+    repo "${sample_repo}" \
+    --fork-from "${admin_user}/${sample_repo}" \
+    --no-clone
+}
+
 function install_postgresql() {
   show_step "Installing PostgreSQL"
   "${SP}"/lib/postgresql/install.sh
@@ -639,7 +686,10 @@ all() {
   }
 
   # Other optional components
-  [[ ${INSTALL_FORGE} == "true" ]] && run_with_hooks install-forgejo install_forgejo ${FORGE_HOST}
+  [[ ${INSTALL_FORGE} == "true" ]] && {
+    run_with_hooks install-forgejo install_forgejo ${FORGE_HOST}
+    run_with_hooks setup-forgejo-sample setup_forgejo_sample
+  }
   [[ ${INSTALL_POSTGRESQL} == "true" ]] && run_with_hooks install-postgresql install_postgresql
   [[ -n ${INSTALL_CUSTOM_OBJECT:-} && ${INSTALL_CUSTOM_OBJECT_ENABLED} == "true" ]] && run_with_hooks install-custom-objects install_custom_objects
 
@@ -894,6 +944,7 @@ function parse_args() {
     interactive,
     reset-preferences,
     ci,
+    setup-forgejo-sample,
     kind
     " -- "$@")
   #shellcheck disable=SC2181
@@ -910,6 +961,11 @@ function parse_args() {
 
     -g | --install-forgejo) # Install Forgejo
       install_forgejo ${FORGE_HOST}
+      setup_forgejo_sample
+      exit
+      ;;
+    --setup-forgejo-sample) # Setup sample Forgejo user and repo
+      setup_forgejo_sample
       exit
       ;;
     --debug-image) # use a debug image to apply KO images

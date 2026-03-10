@@ -251,8 +251,14 @@ def create_pull_request_api(
     default="",
     help="Direct webhook URL (e.g., http://127.0.0.1:30080), takes precedence over smee-url",
 )
+@click.option(
+    "--webhook-secret",
+    envvar="PAC_WEBHOOK_SECRET",
+    default="",
+    help="Webhook secret for HMAC signature verification",
+)
 @click.pass_context
-def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls, webhook_url):
+def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls, webhook_url, webhook_secret):
     """Forgejo repository and pull request management tool."""
     ctx.ensure_object(dict)
 
@@ -295,6 +301,7 @@ def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls, webhook_url)
     ctx.obj["smee_url"] = config["smee_url"]
     ctx.obj["internal_url"] = config["internal_url"]
     ctx.obj["webhook_url"] = webhook_url
+    ctx.obj["webhook_secret"] = webhook_secret
 
 
 @cli.command("repo")
@@ -317,6 +324,16 @@ def cli(ctx, forgejo_url, username, password, repo_owner, skip_tls, webhook_url)
     default=True,
     help="Create PAC namespace and Repository CR",
 )
+@click.option(
+    "--no-clone",
+    is_flag=True,
+    help="Skip cloning the repository locally",
+)
+@click.option(
+    "--fork-from",
+    default="",
+    help="Fork from OWNER/REPO instead of creating a fresh repository",
+)
 @click.pass_context
 def repo_command(
     ctx,
@@ -327,6 +344,8 @@ def repo_command(
     smee_url,
     internal_url,
     create_pac_cr,
+    no_clone,
+    fork_from,
 ):
     """Create a Forgejo repository and optionally clone it locally."""
     # Get common options from context
@@ -336,8 +355,9 @@ def repo_command(
     repo_owner = ctx.obj["repo_owner"]
     skip_tls = ctx.obj["skip_tls"]
 
-    # Get webhook_url from context (takes precedence over smee_url)
+    # Get webhook_url and webhook_secret from context
     webhook_url = ctx.obj.get("webhook_url", "")
+    webhook_secret = ctx.obj.get("webhook_secret", "")
 
     # Get smee_url and internal_url from context if not provided via CLI/env
     if not smee_url and ctx.obj.get("smee_url"):
@@ -411,28 +431,40 @@ def repo_command(
     if response.status_code == 204:
         click.echo(f"Repository {owner}/{repo} deleted")
 
-    # Create new repository
-    if on_org:
-        create_url = f"{forgejo_url}/api/v1/orgs/{owner}/repos"
+    # Create new repository or fork
+    if fork_from:
+        fork_owner, fork_repo_name = fork_from.split("/", 1)
+        fork_url = f"{forgejo_url}/api/v1/repos/{fork_owner}/{fork_repo_name}/forks"
+        fork_data = {"name": repo}
+        response = requests.post(fork_url, json=fork_data, headers=headers, verify=verify_tls)
+        if response.status_code not in (202, 409):
+            click.echo(
+                f"Error forking repository: {response.status_code} {response.text}",
+                err=True,
+            )
+            sys.exit(1)
     else:
-        create_url = f"{forgejo_url}/api/v1/user/repos"
+        if on_org:
+            create_url = f"{forgejo_url}/api/v1/orgs/{owner}/repos"
+        else:
+            create_url = f"{forgejo_url}/api/v1/user/repos"
 
-    repo_data = {
-        "name": repo,
-        "private": False,
-        "auto_init": True,
-        "description": "This is a repo it's a wonderful thing",
-    }
+        repo_data = {
+            "name": repo,
+            "private": False,
+            "auto_init": True,
+            "description": "This is a repo it's a wonderful thing",
+        }
 
-    response = requests.post(
-        create_url, json=repo_data, headers=headers, verify=verify_tls
-    )
-    if response.status_code not in (201, 409):
-        click.echo(
-            f"Error creating repository: {response.status_code} {response.text}",
-            err=True,
+        response = requests.post(
+            create_url, json=repo_data, headers=headers, verify=verify_tls
         )
-        sys.exit(1)
+        if response.status_code not in (201, 409):
+            click.echo(
+                f"Error creating repository: {response.status_code} {response.text}",
+                err=True,
+            )
+            sys.exit(1)
 
     repo_info = response.json()
     html_url = repo_info.get("html_url", "")
@@ -442,53 +474,57 @@ def repo_command(
 
     # Create webhook if webhook URL or smee URL is provided
     if effective_webhook_url:
-        create_webhook(forgejo_url, headers, owner, repo, effective_webhook_url, verify_tls)
+        create_webhook(
+            forgejo_url, headers, owner, repo, effective_webhook_url, verify_tls, webhook_secret
+        )
 
     namespace = target_ns if target_ns else repo
 
-    if create_pac_cr:
-        create_pac_resources(namespace, repo, html_url, internal_url, token)
+    if create_pac_cr and not fork_from:
+        create_pac_resources(namespace, repo, html_url, internal_url, token, webhook_secret)
 
-    # Build authenticated clone URL
-    parsed = urlparse(clone_url)
-    auth_url = urlunparse(
-        (parsed.scheme, f"git:{password}@{parsed.netloc}", parsed.path, "", "", "")
-    )
+    if not no_clone:
+        # Build authenticated clone URL
+        parsed = urlparse(clone_url)
+        auth_url = urlunparse(
+            (parsed.scheme, f"git:{password}@{parsed.netloc}", parsed.path, "", "", "")
+        )
 
-    # Clone repository
-    local_checkout = local_repo if local_repo else f"/tmp/{repo}"
-    local_path = Path(local_checkout)
+        # Clone repository
+        local_checkout = local_repo if local_repo else f"/tmp/{repo}"
+        local_path = Path(local_checkout)
 
-    if local_path.exists():
-        click.echo(f"Directory {local_checkout} already exists, skipping clone")
+        if local_path.exists():
+            click.echo(f"Directory {local_checkout} already exists, skipping clone")
+            click.echo(f"\nLocal Checkout Directory: {local_checkout}")
+            click.echo(f"Forgejo Repository URL: {html_url}")
+            return
+
+        try:
+            subprocess.run(
+                ["git", "clone", auth_url, local_checkout],
+                check=True,
+                capture_output=True,
+            )
+            click.echo(f"Repository cloned to: {local_checkout}")
+
+            # Create a branch
+            subprocess.run(
+                ["git", "checkout", "-b", "tektonci"],
+                cwd=local_checkout,
+                check=True,
+                capture_output=True,
+            )
+            click.echo("Created branch: tektonci")
+
+        except subprocess.CalledProcessError as e:
+            click.echo(f"Error during git operations: {e}", err=True)
+            if e.stderr:
+                click.echo(e.stderr.decode(), err=True)
+            sys.exit(1)
+
         click.echo(f"\nLocal Checkout Directory: {local_checkout}")
-        click.echo(f"Forgejo Repository URL: {html_url}")
-        return
 
-    try:
-        subprocess.run(
-            ["git", "clone", auth_url, local_checkout],
-            check=True,
-            capture_output=True,
-        )
-        click.echo(f"Repository cloned to: {local_checkout}")
-
-        # Create a branch
-        subprocess.run(
-            ["git", "checkout", "-b", "tektonci"],
-            cwd=local_checkout,
-            check=True,
-            capture_output=True,
-        )
-        click.echo("Created branch: tektonci")
-
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Error during git operations: {e}", err=True)
-        if e.stderr:
-            click.echo(e.stderr.decode(), err=True)
-        sys.exit(1)
-
-    click.echo(f"\nLocal Checkout Directory: {local_checkout}")
     click.echo(f"Forgejo Repository URL: {html_url}")
 
 
@@ -711,6 +747,80 @@ def checkout_command(ctx, repo, destination):
         sys.exit(1)
 
 
+@cli.command("create-user")
+@click.option("--new-username", default="nonadmin", help="Username for the new user")
+@click.option("--new-password", default="nonadmin", help="Password for the new user")
+@click.option(
+    "--new-email", default="nonadmin@localhost", help="Email for the new user"
+)
+@click.pass_context
+def create_user_command(ctx, new_username, new_password, new_email):
+    """Create a non-admin user on Forgejo using admin credentials."""
+    forgejo_url = ctx.obj["forgejo_url"]
+    username = ctx.obj["username"]
+    password = ctx.obj["password"]
+    skip_tls = ctx.obj["skip_tls"]
+
+    # Validate required configuration (no repo_owner needed)
+    missing = []
+    for field in ("forgejo_url", "username", "password"):
+        if not ctx.obj.get(field):
+            missing.append(field)
+    if missing:
+        click.echo(
+            f"Error: Missing required configuration: {', '.join(missing)}", err=True
+        )
+        sys.exit(1)
+
+    forgejo_url = forgejo_url.rstrip("/")
+    verify_tls = not skip_tls
+
+    if skip_tls:
+        warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+
+    auth = (username, password)
+    url = f"{forgejo_url}/api/v1/admin/users"
+    user_data = {
+        "username": new_username,
+        "password": new_password,
+        "email": new_email,
+        "must_change_password": False,
+        "visibility": "public",
+    }
+
+    # Retry loop for service readiness (Forgejo may still be starting)
+    max_retries = 30
+    retry_delay = 5  # seconds
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(url, json=user_data, auth=auth, verify=verify_tls)
+            if response.status_code in (503, 502):
+                if attempt < max_retries:
+                    click.echo(f"Forgejo not ready (HTTP {response.status_code}), retrying ({attempt}/{max_retries})...")
+                    time.sleep(retry_delay)
+                    continue
+            break  # Got a non-transient response
+        except requests.exceptions.ConnectionError:
+            if attempt < max_retries:
+                click.echo(f"Connection failed, retrying ({attempt}/{max_retries})...")
+                time.sleep(retry_delay)
+                continue
+            raise
+        except requests.exceptions.RequestException as exc:
+            click.echo(f"Error creating user: {exc}", err=True)
+            sys.exit(1)
+
+    if response.status_code == 201:
+        click.echo(f"User '{new_username}' created successfully")
+    elif response.status_code == 422:
+        click.echo(f"User '{new_username}' already exists")
+    else:
+        click.echo(
+            f"Error creating user: {response.status_code} {response.text}", err=True
+        )
+        sys.exit(1)
+
+
 def create_access_token(forgejo_url, auth, name, verify_tls):
     """Create an access token with all scopes."""
 
@@ -749,16 +859,16 @@ def create_access_token(forgejo_url, auth, name, verify_tls):
     return auth[1]
 
 
-def create_webhook(forgejo_url, headers, owner, repo, hook_url, verify_tls):
+def create_webhook(forgejo_url, headers, owner, repo, hook_url, verify_tls, webhook_secret=""):
     """Create a webhook for the repository."""
     url = f"{forgejo_url}/api/v1/repos/{owner}/{repo}/hooks"
+    config = {"url": hook_url, "content_type": "json"}
+    if webhook_secret:
+        config["secret"] = webhook_secret
     webhook_data = {
         "type": "forgejo",
         "active": True,
-        "config": {
-            "url": hook_url,
-            "content_type": "json",
-        },
+        "config": config,
         "events": ["push", "issue_comment", "pull_request"],
     }
 
@@ -769,7 +879,7 @@ def create_webhook(forgejo_url, headers, owner, repo, hook_url, verify_tls):
         click.echo(f"Warning: Could not create webhook (status {response.status_code})")
 
 
-def create_pac_resources(namespace, repo_name, repo_url, internal_url, token):
+def create_pac_resources(namespace, repo_name, repo_url, internal_url, token, webhook_secret=""):
     """Create PAC namespace, secret, and Repository CR using kubectl."""
 
     click.echo(f"Creating PAC resources in namespace: {namespace}")
@@ -808,17 +918,16 @@ def create_pac_resources(namespace, repo_name, repo_url, internal_url, token):
         capture_output=True,
     )
 
+    secret_args = [
+        "kubectl", "create", "secret", "generic", repo_name,
+        f"--from-literal=token={token}",
+    ]
+    if webhook_secret:
+        secret_args.append(f"--from-literal=webhook-secret={webhook_secret}")
+    secret_args += ["-n", namespace]
+
     result = subprocess.run(
-        [
-            "kubectl",
-            "create",
-            "secret",
-            "generic",
-            repo_name,
-            f"--from-literal=token={token}",
-            "-n",
-            namespace,
-        ],
+        secret_args,
         capture_output=True,
         text=True,
     )
@@ -841,6 +950,12 @@ def create_pac_resources(namespace, repo_name, repo_url, internal_url, token):
         capture_output=True,
     )
 
+    webhook_secret_block = ""
+    if webhook_secret:
+        webhook_secret_block = f"""    webhook_secret:
+      name: {repo_name}
+      key: webhook-secret
+"""
     repository_yaml = f"""apiVersion: pipelinesascode.tekton.dev/v1alpha1
 kind: Repository
 metadata:
@@ -854,7 +969,7 @@ spec:
     secret:
       name: {repo_name}
       key: token
-"""
+{webhook_secret_block}"""
 
     result = subprocess.run(
         ["kubectl", "apply", "-f", "-"],
