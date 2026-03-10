@@ -503,6 +503,11 @@ function setup_forgejo_sample() {
   local sample_pass="nonadmin"
   local sample_repo="sample"
 
+  type -p uv >/dev/null 2>&1 || {
+    echo "Installing uv tool to generate second controller yaml"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+  }
+
   # Create non-admin user (authenticates as admin)
   "${SP}"/misc/forgejo-mng/main.py \
     --forgejo-url "${forgejo_url}" \
