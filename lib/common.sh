@@ -305,10 +305,7 @@ run_hook() {
         local display_name="${hook_name}"
         [[ ${#hook_files[@]} -gt 1 ]] && display_name="${hook_name}/$(basename "${hook_file}")"
         echo_color cyan "Running hook: ${display_name}"
-        if ! "${hook_file}"; then
-            echo_color red "Hook '${display_name}' failed"
-            return 1
-        fi
+        "${hook_file}"
         echo_color green "Hook '${display_name}' completed"
     done
 }
@@ -316,7 +313,7 @@ run_hook() {
 run_with_hooks() {
     local hook_name="$1"
     shift
-    run_hook "pre-${hook_name}" || return $?
-    "$@" || return $?
+    run_hook "pre-${hook_name}"
+    "$@"
     run_hook "post-${hook_name}"
 }
