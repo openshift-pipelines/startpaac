@@ -33,7 +33,7 @@ fi
 TARGET_HOST=${TARGET_HOST:-}
 DOMAIN_NAME=${DOMAIN_NAME:-""}
 PAC_DOMAIN=${PAC_DOMAIN:-""}
-PAAC=${PAAC:-""}
+PAC=${PAC:-""}
 REGISTRY=${REGISTRY:-""}
 KO_EXTRA_FLAGS=${KO_EXTRA_FLAGS:-""}
 FORGE_HOST=${FORGE_HOST:-""}
@@ -66,7 +66,7 @@ if [[ ${TARGET_HOST} == local ]]; then
   FORGE_HOST=gitea.${PAC_DOMAIN}
   TARGET_BIND_IP=127.0.0.1
   DASHBOARD=dashboard.${PAC_DOMAIN}
-  PAAC=paac.${PAC_DOMAIN}
+  PAC=paac.${PAC_DOMAIN}
   # Default to NodePort webhook for local mode
   USE_NODEPORT_WEBHOOK=${USE_NODEPORT_WEBHOOK:-true}
 else
@@ -78,12 +78,12 @@ PAC_WEBHOOK_NODEPORT=${PAC_WEBHOOK_NODEPORT:-30080}
 if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
   PAC_WEB_URL=${PAC_WEB_URL:-"http://${TARGET_BIND_IP:-127.0.0.1}:${PAC_WEBHOOK_NODEPORT}"}
 else
-  PAC_WEB_URL=${PAC_WEB_URL:-"https://${PAAC}"}
+  PAC_WEB_URL=${PAC_WEB_URL:-"https://${PAC}"}
 fi
 PAC_WEB_SECRET=${PAC_WEB_SECRET:-""}
 
-[[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAAC} ]] && {
-  echo "Need to set DOMAIN_NAME, TARGET_HOST, TARGET_BIND_IP, REGISTRY, DASHBOARD and PAAC in your $HOME/.config/startpaac/config"
+[[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAC} ]] && {
+  echo "Need to set DOMAIN_NAME, TARGET_HOST, TARGET_BIND_IP, REGISTRY, DASHBOARD and PAC in your $HOME/.config/startpaac/config"
   exit 1
 }
 [[ -n ${DOMAIN_NAME} && -z ${PAC_DOMAIN} ]] && PAC_DOMAIN=${DOMAIN_NAME}
@@ -113,17 +113,17 @@ Using configuration on ${TARGET_HOST}:
 
 DOMAIN_NAME: ${DOMAIN_NAME},
 TARGET_BIND_IP: ${TARGET_BIND_IP}
-PAAC: ${protocol}://${PAAC}
+PAC: ${protocol}://${PAC}
 REGISTRY: ${protocol}://${REGISTRY}
 FORGE_HOST: ${protocol}://${FORGE_HOST}
 DASHBOARD: ${protocol}://${DASHBOARD}
 EOF
   if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
-    echo "PAAC WEBHOOK: ${PAC_WEB_URL} (NodePort - no gosmee needed)"
+    echo "PAC WEBHOOK: ${PAC_WEB_URL} (NodePort - no gosmee needed)"
   else
     cat <<EOF
   GOSMEE:
-  gosmee client --saveDir /tmp/replay ${smee_url} ${protocol}://${PAAC}
+  gosmee client --saveDir /tmp/replay ${smee_url} ${protocol}://${PAC}
 EOF
   fi
 }
@@ -399,7 +399,7 @@ configure_pac() {
   show_step "Configuring PAC"
   [[ -n ${1:-} && ${1} == "--no-ingress" ]] && no_ingress=yes
   if [[ -z ${no_ingress} ]]; then
-    create_ingress pipelines-as-code pipelines-as-code-controller "${PAAC}" 8080
+    create_ingress pipelines-as-code pipelines-as-code-controller "${PAC}" 8080
   fi
   patch_configmap "${PAC_CONTROLLER_TARGET_NS}"
 

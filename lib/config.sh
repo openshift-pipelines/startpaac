@@ -56,7 +56,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # https://nextdns.io to let you create wildcard dns for your local network.
 #
 # DOMAIN_NAME=lan.mydomain.com
-# PAAC=paac.\${DOMAIN_NAME}
+# PAC=paac.\${DOMAIN_NAME}
 # REGISTRY=registry.\${DOMAIN_NAME}
 # FORGE_HOST=gitea.\${DOMAIN_NAME}
 # DASHBOARD=dashboard.\${DASHBOARD}
@@ -66,7 +66,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # TARGET_HOST=civuole.lan
 # KO_EXTRA_FLAGS=(--insecure-registry --platform linux/arm64)
 # DOMAIN_NAME=vm.lan
-# PAAC=paac.\${DOMAIN_NAME}
+# PAC=paac.\${DOMAIN_NAME}
 # REGISTRY=registry.\${DOMAIN_NAME}
 # FORGE_HOST=gitea.\${DOMAIN_NAME}
 # TARGET_BIND_IP=192.168.1.5
