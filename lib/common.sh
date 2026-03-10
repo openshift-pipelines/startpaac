@@ -300,7 +300,7 @@ run_hook() {
 
     [[ ${#hook_files[@]} -eq 0 ]] && return 0
 
-    export STARTPAAC_HOOK_NAME="${hook_name}"
+    export STARTPAC_HOOK_NAME="${hook_name}"
     for hook_file in "${hook_files[@]}"; do
         local display_name="${hook_name}"
         [[ ${#hook_files[@]} -gt 1 ]] && display_name="${hook_name}/$(basename "${hook_file}")"

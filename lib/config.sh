@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC1090
-CONFIG_FILE=${STARTPAAC_CONFIG_FILE:-$HOME/.config/startpaac/config}
+CONFIG_FILE=${STARTPAC_CONFIG_FILE:-$HOME/.config/startpaac/config}
 echo "Loading configuration from ${CONFIG_FILE}"
 
 if [[ -e "${CONFIG_FILE}" ]]; then

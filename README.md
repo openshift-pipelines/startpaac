@@ -249,7 +249,7 @@ Create a configuration file at `$HOME/.config/startpaac/config` with the followi
 # PAC_DIR=$GOPATH/src/github.com/openshift-pipelines/pac/main
 ```
 
-You can have an alternative config file with the `STARTPAAC_CONFIG_FILE`
+You can have an alternative config file with the `STARTPAC_CONFIG_FILE`
 environment variable.
 
 ## PostgreSQL Configuration
@@ -513,7 +513,7 @@ A hook can be either:
 
 All existing environment variables are inherited (`KUBECONFIG`, `TARGET_HOST`,
 `DOMAIN_NAME`, `PAC_DIR`, `CI_MODE`, etc.). Additionally,
-`STARTPAAC_HOOK_NAME` is exported with the current hook name.
+`STARTPAC_HOOK_NAME` is exported with the current hook name.
 
 ### Failure Behavior
 
