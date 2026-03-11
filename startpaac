@@ -80,7 +80,7 @@ if [[ "${USE_NODEPORT_WEBHOOK}" == "true" ]]; then
 else
   PAC_WEB_URL=${PAC_WEB_URL:-"https://${PAC}"}
 fi
-PAC_WEB_SECRET=${PAC_WEB_SECRET:-""}
+PAC_WEBHOOK_SECRET=${PAC_WEBHOOK_SECRET:-""}
 
 [[ -z ${DOMAIN_NAME} || -z ${TARGET_HOST} || -z ${TARGET_BIND_IP} || -z ${REGISTRY} || -z ${DASHBOARD} || -z ${PAC} ]] && {
   echo "Need to set DOMAIN_NAME, TARGET_HOST, TARGET_BIND_IP, REGISTRY, DASHBOARD and PAC in your $HOME/.config/startpaac/config"
@@ -527,7 +527,7 @@ function setup_forgejo_sample() {
     --repo-owner "${admin_user}" \
     --skip-tls \
     --webhook-url "${PAC_WEB_URL}" \
-    --webhook-secret "${PAC_WEB_SECRET}" \
+    --webhook-secret "${PAC_WEBHOOK_SECRET}" \
     repo "${sample_repo}" \
     --no-clone
 
@@ -539,7 +539,7 @@ function setup_forgejo_sample() {
     --repo-owner "${sample_user}" \
     --skip-tls \
     --webhook-url "${PAC_WEB_URL}" \
-    --webhook-secret "${PAC_WEB_SECRET}" \
+    --webhook-secret "${PAC_WEBHOOK_SECRET}" \
     repo "${sample_repo}" \
     --fork-from "${admin_user}/${sample_repo}" \
     --no-clone
