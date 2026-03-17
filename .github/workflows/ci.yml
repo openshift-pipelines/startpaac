@@ -87,7 +87,7 @@ jobs:
         timeout-minutes: 30
         run: |
           set -x
-          ./startpaac -a
+          ./startpaac --ci -a
 
       - name: Set up kubeconfig for kind cluster
         run: |
@@ -95,59 +95,53 @@ jobs:
           kubectl config use-context kind-kind
           kubectl cluster-info
 
-      - name: Wait for all pods to be ready
+      - name: Wait for deployments to be ready
         timeout-minutes: 10
         run: |
-          set -x
-          echo "=== Waiting for Tekton Pipelines pods ==="
-          kubectl wait --for=condition=Ready pods --all -n tekton-pipelines --timeout=5m || true
+          set -euxo pipefail
+          echo "=== Waiting for Tekton Pipelines ==="
+          kubectl -n tekton-pipelines rollout status deployment --timeout=300s
 
-          echo "=== Waiting for nginx ingress pods ==="
-          kubectl wait --for=condition=Ready pods --all -n ingress-nginx --timeout=5m || true
+          echo "=== Waiting for nginx ingress ==="
+          kubectl -n ingress-nginx rollout status deployment --timeout=300s
 
-          echo "=== Waiting for PAC pods (if installed) ==="
-          if kubectl get namespace pipelines-as-code 2>/dev/null; then
-            kubectl wait --for=condition=Ready pods --all -n pipelines-as-code --timeout=5m || true
-          fi
+          echo "=== Waiting for PAC deployments ==="
+          for name in controller webhook watcher; do
+            echo "--- pipelines-as-code-$name ---"
+            kubectl -n pipelines-as-code rollout status deployment/pipelines-as-code-$name --timeout=120s
+          done
+
+          echo "=== Waiting for Forgejo ==="
+          kubectl -n forgejo rollout status statefulset/forgejo --timeout=300s
 
       - name: Run smoke tests
         timeout-minutes: 10
         run: |
-          set -x
+          set -euxo pipefail
 
-          echo "=== Test 1: Verify Kind cluster exists ==="
+          echo "=== Verify Kind cluster ==="
           kind get clusters | grep -q "kind"
 
-          echo "=== Test 2: Check Kubernetes cluster info ==="
-          kubectl cluster-info
-
-          echo "=== Test 3: Verify core namespaces exist ==="
-          kubectl get namespaces
+          echo "=== Verify core namespaces ==="
           kubectl get namespace tekton-pipelines
           kubectl get namespace ingress-nginx
+          kubectl get namespace pipelines-as-code
+          kubectl get namespace forgejo
 
-          echo "=== Test 4: Check Tekton Pipelines pods ==="
+          echo "=== Verify Tekton pods running ==="
           kubectl get pods -n tekton-pipelines -o wide
+          kubectl wait --for=condition=Ready pods --all -n tekton-pipelines --timeout=60s
 
-          echo "=== Test 5: Check nginx ingress pods ==="
-          kubectl get pods -n ingress-nginx -o wide
+          echo "=== Verify PAC pods running ==="
+          kubectl get pods -n pipelines-as-code -o wide
+          kubectl wait --for=condition=Ready pods --all -n pipelines-as-code --timeout=60s
 
-          echo "=== Test 6: Verify registry deployment ==="
-          kubectl get pods --all-namespaces | grep registry || echo "Registry not found (optional)"
+          echo "=== Verify PAC controller endpoint exists ==="
+          kubectl get ep -n pipelines-as-code pipelines-as-code-controller
 
-          echo "=== Test 7: Check PAC installation (if installed) ==="
-          if kubectl get namespace pipelines-as-code 2>/dev/null; then
-            kubectl get pods -n pipelines-as-code -o wide
-          else
-            echo "PAC namespace not found (optional component)"
-          fi
-
-          echo "=== Test 8: Verify Tekton Dashboard (if installed) ==="
-          if kubectl get deployment -n tekton-pipelines tekton-dashboard 2>/dev/null; then
-            kubectl get pods -n tekton-pipelines -l app=tekton-dashboard
-          else
-            echo "Tekton Dashboard not found (optional component)"
-          fi
+          echo "=== Verify Forgejo running ==="
+          kubectl get pods -n forgejo -o wide
+          kubectl wait --for=condition=Ready pods --all -n forgejo --timeout=60s
 
           echo "=== All smoke tests passed ==="
 
