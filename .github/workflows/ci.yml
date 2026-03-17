@@ -35,13 +35,6 @@ jobs:
       - name: Set up ko (Build/deploy Go apps on Kubernetes)
         uses: ko-build/setup-ko@v0.9
 
-      - name: Install gum (Interactive menus)
-        run: |
-          GUM_VERSION="0.17.0"
-          curl -fsSL "https://github.com/charmbracelet/gum/releases/download/v${GUM_VERSION}/gum_${GUM_VERSION}_Linux_x86_64.tar.gz" | \
-            sudo tar xzf - -C /usr/local/bin --strip-components=1 gum_${GUM_VERSION}_Linux_x86_64/gum
-          /usr/local/bin/gum --version
-
       - name: Install minica (Self-signed certificate generation)
         run: |
           go install github.com/jsha/minica@latest
@@ -55,7 +48,6 @@ jobs:
           helm version
           kubectl version --client
           ko version
-          gum --version
           minica --version || echo "minica installed"
           jq --version
 
