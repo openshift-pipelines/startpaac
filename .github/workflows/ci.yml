@@ -37,7 +37,7 @@ jobs:
 
       - name: Install minica (Self-signed certificate generation)
         run: |
-          go install github.com/jsha/minica@latest
+          go install github.com/jsha/minica@v1.1.0
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Verify all dependencies installed
@@ -104,7 +104,7 @@ jobs:
           done
 
           echo "=== Waiting for Forgejo ==="
-          kubectl -n forgejo rollout status statefulset/forgejo --timeout=300s
+          kubectl -n forgejo rollout status deployment/forgejo --timeout=300s
 
       - name: Run smoke tests
         timeout-minutes: 10
