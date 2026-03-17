@@ -345,7 +345,6 @@ For non-interactive installation of everything, use the `-a` option.
 - `--install-tekton`        Install Tekton
 - `--install-triggers`      Install Tekton Triggers
 - `--install-chains`        Install Tekton Chains
-- `--install-custom-crds`   Install custom CRDs
 - `--redeploy-kind`         Redeploy Kind
 - `--scale-down`            Scale down a component (controller, watcher, webhook)
 - `--second-secret=SECRET`  Pass name for the second controller secret
@@ -429,12 +428,6 @@ Clear your saved preferences:
 
 ```sh
 ./startpaac --install-chains
-```
-
-### Install Custom CRDs
-
-```sh
-./startpaac --install-custom-crds
 ```
 
 ### Deploy a Specific Component

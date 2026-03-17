@@ -59,7 +59,6 @@ _arguments -C \
     '--second-secret[Set the secret for second controller]:secret:->pass_profiles' \
     '--configure-pac[Configure PAC]' \
     '--show-config[Show config]' \
-    '--install-custom-crds[Install custom CRDs]' \
     '*:argument:->args' && ret=0
 
 case $state in
