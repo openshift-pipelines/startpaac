@@ -65,7 +65,8 @@ The following tools are required. Install them before running `startpaac`:
 - **DO NOT use this setup in production environments**
 - Review and change all default credentials in `lib/*/values.yaml` if deploying anywhere accessible
 
-For production deployments, please refer to the [Pipelines as Code production installation guide](https://pipelinesascode.com/docs/install/installation/).
+For production deployments, please refer to the [Pipelines as Code production installation guide](https://pipelinesascode.com/docs/installation/overview/).
+
 
 ## Getting Started
 
