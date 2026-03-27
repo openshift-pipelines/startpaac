@@ -2,7 +2,7 @@
 
 A lightweight tool for quickly setting up Forgejo repositories and Pipelines-as-Code integration for testing and development. Automates repository creation, webhook configuration, and Kubernetes resources needed for PAC.
 
-Originally designed as part of the [startpaac](https://github.com/openshift-pipelines/pipelines-as-code) project but can be used independently.
+Originally designed as part of the [startpaac](https://github.com/tektoncd/pipelines-as-code) project but can be used independently.
 
 **Use this for:**
 

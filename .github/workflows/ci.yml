@@ -19,7 +19,7 @@ jobs:
       - name: Checkout pipelines-as-code repository (required dependency)
         uses: actions/checkout@v4
         with:
-          repository: openshift-pipelines/pipelines-as-code
+          repository: tektoncd/pipelines-as-code
           path: pipelines-as-code
 
       - name: Set up Helm

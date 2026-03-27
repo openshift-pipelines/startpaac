@@ -14,7 +14,7 @@ Create a config file:
 mkdir -p $HOME/.config/startpaac
 cat <<EOF > $HOME/.config/startpaac/config
 TARGET_HOST=local
-PAC_DIR=~/go/src/github.com/openshift-pipelines/pipelines-as-code
+PAC_DIR=~/go/src/github.com/tektoncd/pipelines-as-code
 PAC_SECRET_FOLDER=~/secrets
 EOF
 ```
