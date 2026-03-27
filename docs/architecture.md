@@ -427,6 +427,6 @@ INSTALL_CUSTOM_OBJECT_ENABLED=true
 ## Related Documentation
 
 - [README.md](../README.md) - User guide and getting started
-- [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) - Common issues and solutions
+- [configuration.md](configuration.md) - Full configuration reference
 - [Pipelines as Code Docs](https://pipelinesascode.com/docs/) - PAC documentation
 - [Tekton Docs](https://tekton.dev/docs/) - Tekton documentation
