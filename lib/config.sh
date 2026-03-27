@@ -72,7 +72,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # TARGET_BIND_IP=192.168.1.5
 # TARGET_BIND_IP=192.168.1.5,10.0.0.5 # Comma-separated for multiple IPs
 # DASHBOARD=dashboard.\${DOMAIN_NAME}
-# PAC_DIR=\$GOPATH/src/github.com/openshift-pipelines/pac/main
+# PAC_DIR=\$GOPATH/src/github.com/tektoncd/pac/main
 #
 # USE_NODEPORT_WEBHOOK: Use NodePort instead of gosmee for local webhooks
 # Defaults to true when TARGET_HOST=local
@@ -82,7 +82,7 @@ elif [[ -z ${PAC_DIR:-} ]]; then
 # PAC_WEBHOOK_NODEPORT=30080
 
 # We are defaulting to a local install
-PAC_DIR=~/go/src/github.com/openshift-pipelines/pac/main
+PAC_DIR=~/go/src/github.com/tektoncd/pac/main
 PAC_SECRET_FOLDER=~/.local/share/startpaac/secrets
 TARGET_HOST=local
 EOF

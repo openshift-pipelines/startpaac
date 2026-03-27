@@ -6,7 +6,7 @@ Located at `~/.config/startpaac/config` (override with `STARTPAC_CONFIG_FILE` en
 
 ```bash
 # Path to your pipelines-as-code checkout (auto-detected if unset)
-PAC_DIR=~/go/src/github.com/openshift-pipelines/pipelines-as-code
+PAC_DIR=~/go/src/github.com/tektoncd/pipelines-as-code
 
 # Secrets via password-store (pass)
 # Folder structure: github-application-id, github-private-key, smee, webhook.secret

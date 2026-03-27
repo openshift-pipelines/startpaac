@@ -21,7 +21,7 @@ else
   }
 
   cd "${PAC_DIR:-}" || {
-    echo "cannot find the pipelines-as-code directory, set the PAC_DIR variable to where you have checked out the github.com/openshift-pipelines/pipelines-as-code repository in your ${HOME}/.config/startpaac/config"
+    echo "cannot find the pipelines-as-code directory, set the PAC_DIR variable to where you have checked out the github.com/tektoncd/pipelines-as-code repository in your ${HOME}/.config/startpaac/config"
     exit 1
   }
 fi
