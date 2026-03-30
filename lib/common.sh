@@ -199,18 +199,12 @@ check_tools() {
     "curl"
     "docker"
     "kind"
-    "ko"
     "base64"
     "sed"
     "mktemp"
     "readlink"
     "jq"
   )
-
-  # Only require gum in interactive mode
-  if [[ ${CI_MODE:-false} != "true" ]]; then
-    tools+=("gum")
-  fi
 
   # minica is required for TLS certificate generation
   tools+=("minica")
@@ -234,6 +228,92 @@ check_tools() {
     fi
   fi
   return 0
+}
+
+# Check for a tool at point-of-use and exit with a clear error if missing
+require_tool() {
+  local tool=$1
+  if ! command -v "${tool}" &>/dev/null; then
+    echo "Error: ${tool} is required for this operation but is not installed or not in PATH."
+    exit 1
+  fi
+}
+
+# Wrapper around gum confirm with bash fallback
+_confirm() {
+  local prompt="${1:-Confirm?}"
+  if command -v gum &>/dev/null; then
+    gum confirm "${prompt}"
+  else
+    local answer
+    read -r -p "${prompt} [y/N] " answer </dev/tty
+    [[ ${answer} =~ ^[Yy]$ ]]
+  fi
+}
+
+# Wrapper around gum choose --no-limit with bash fallback
+# Usage: echo "items" | _choose_multi [--selected="item1,item2"]
+_choose_multi() {
+  local preselected=""
+  for arg in "$@"; do
+    case "${arg}" in
+    --selected=*) preselected="${arg#--selected=}" ;;
+    esac
+  done
+
+  if command -v gum &>/dev/null; then
+    if [[ -n ${preselected} ]]; then
+      gum choose --no-limit --selected="${preselected}"
+    else
+      gum choose --no-limit
+    fi
+    return
+  fi
+
+  # Bash fallback: numbered toggle menu
+  local -a items=()
+  local -a selected=()
+  while IFS= read -r line; do
+    [[ -z ${line} ]] && continue
+    items+=("${line}")
+    if [[ ",${preselected}," == *",${line},"* ]]; then
+      selected+=(1)
+    else
+      selected+=(0)
+    fi
+  done
+
+  local count=${#items[@]}
+  [[ ${count} -eq 0 ]] && return
+
+  while true; do
+    echo "" >&2
+    for i in $(seq 0 $((count - 1))); do
+      local marker="[ ]"
+      [[ ${selected[$i]} -eq 1 ]] && marker="[x]"
+      printf "  %d) %s %s\n" "$((i + 1))" "${marker}" "${items[$i]}" >&2
+    done
+    echo "" >&2
+    local input
+    read -r -p "Toggle a number, or press Enter when done: " input </dev/tty
+    if [[ -z ${input} || ${input} == "d" ]]; then
+      break
+    fi
+    if [[ ${input} =~ ^[0-9]+$ ]] && ((input >= 1 && input <= count)); then
+      local idx=$((input - 1))
+      if [[ ${selected[idx]} -eq 0 ]]; then
+        selected[idx]=1
+      else
+        selected[idx]=0
+      fi
+    else
+      echo "Invalid input, enter a number between 1 and ${count}" >&2
+    fi
+  done
+
+  for i in $(seq 0 $((count - 1))); do
+    [[ ${selected[$i]} -eq 1 ]] && echo "${items[$i]}"
+  done
 }
 
 makeGosmee() {

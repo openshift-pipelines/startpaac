@@ -101,9 +101,13 @@ See [docs/configuration.md](docs/configuration.md) for the full reference (remot
 
 ## Prerequisites
 
-docker, kind, helm, kubectl, ko, gum, jq, minica
+docker, kind, helm, kubectl, jq, minica
 
-Optional: [pass](https://www.passwordstore.org/) for secrets management
+Optional:
+
+- [ko](https://ko.build/) - only needed when deploying PAC from source (`-p`, `-a`, `-c` flags)
+- [gum](https://github.com/charmbracelet/gum) - enhances interactive menus (falls back to plain bash prompts)
+- [pass](https://www.passwordstore.org/) - for secrets management
 
 macOS users: install [coreutils](https://formulae.brew.sh/formula/coreutils) and [gnu-sed](https://formulae.brew.sh/formula/gnu-sed) from Homebrew.
 

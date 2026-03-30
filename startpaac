@@ -313,6 +313,8 @@ install_pac() {
   extras=()
   [[ -e "${PAC_DIR}/pkg/test/nonoai/deployment.yaml" ]] && extras+=(-f "${PAC_DIR}/pkg/test/nonoai/deployment.yaml")
 
+  require_tool ko
+
   # Verify registry is accessible before ko resolve
   echo "Verifying registry ${REGISTRY} is accessible..."
   local reg_ok=false
@@ -613,6 +615,8 @@ function install_github_second_ctrl() {
     pac_controller_smee_url=$(cat ${PAC_SECOND_SECRET_FOLDER}/smee)
   fi
 
+  require_tool ko
+
   type -p uv >/dev/null 2>&1 || {
     echo "Installing uv tool to generate second controller yaml"
     curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -864,9 +868,9 @@ show_component_menu() {
   preselected=$(get_preselected_items | paste -sd, -)
 
   if [[ -n ${preselected} ]]; then
-    selected_items=$(echo "${menu_items}" | gum choose --no-limit --selected="${preselected}")
+    selected_items=$(echo "${menu_items}" | _choose_multi --selected="${preselected}")
   else
-    selected_items=$(echo "${menu_items}" | gum choose --no-limit)
+    selected_items=$(echo "${menu_items}" | _choose_multi)
   fi
 
   parse_menu_selections "${selected_items}"
@@ -875,7 +879,7 @@ show_component_menu() {
 # Ask user if they want to save preferences
 prompt_save_preferences() {
   echo ""
-  if gum confirm "Save these preferences for next time?"; then
+  if _confirm "Save these preferences for next time?"; then
     save_preferences
     echo_color brightgreen "Preferences saved to ${PREFERENCES_FILE}"
   fi
@@ -1182,7 +1186,7 @@ function parse_args() {
   show_selected_components
 
   # Final confirmation
-  if ! gum confirm "Proceed with installation?"; then
+  if ! _confirm "Proceed with installation?"; then
     echo "Installation cancelled."
     exit 1
   fi
