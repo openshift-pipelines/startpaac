@@ -246,7 +246,21 @@ install_tekton() {
   release_yaml=$(cache_yaml_file tekton https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml)
   kubectl apply --filename "${release_yaml}" >/dev/null
   wait_for_resource endpoint tekton-pipelines tekton-pipelines-webhook
-  kubectl patch configmap -n tekton-pipelines --type merge -p '{"data":{"enable-step-actions": "true"}}' feature-flags
+  wait_for_resource pod tekton-pipelines app=tekton-pipelines-webhook
+
+  local patch='{"data":{"enable-step-actions": "true"}}'
+  local max_attempts=5
+  for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+    if kubectl patch configmap -n tekton-pipelines --type merge -p "${patch}" feature-flags 2>/dev/null; then
+      break
+    fi
+    if [[ ${attempt} -eq ${max_attempts} ]]; then
+      echo_color brightred "Failed to patch feature-flags after ${max_attempts} attempts"
+      return 1
+    fi
+    echo_color brightwhite "Webhook not ready yet, retrying in 5s (${attempt}/${max_attempts})..."
+    sleep 5
+  done
 }
 
 install_triggers() {
