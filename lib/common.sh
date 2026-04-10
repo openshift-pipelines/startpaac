@@ -160,6 +160,13 @@ wait_for_resource() {
         ep=$(kubectl get ep -n "${namespace}" "${name}" -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || true)
         [[ -n ${ep} ]] && is_ready=1
         ;;
+      pod)
+        kubectl wait --for=condition=Ready pods \
+          -l "${name}" \
+          -n "${namespace}" \
+          --timeout=0s \
+          &>/dev/null && is_ready=1
+        ;;
       deployment|deploy)
         local desired ready
         desired=$(kubectl get deployment -n "${namespace}" "${name}" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
