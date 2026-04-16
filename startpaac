@@ -967,11 +967,77 @@ function parse_args() {
       scale_down_controller+=" $2"
       shift
       ;;
-
     -g | --install-forgejo) # Install Forgejo
       install_forgejo ${FORGE_HOST}
       setup_forgejo_sample
       exit
+      ;;
+    -s | --sync-kubeconfig) # Sync kubeconfig
+      sync_kubeconfig
+      exit
+      ;;
+    -S | --github-second-ctrl) # Deploy second controller for github
+      install_github_second_ctrl
+      exit
+      ;;
+    -H | --all-github-second-no-forgejo) # Install everything but forgejo
+      INSTALL_FORGE=false
+      install_kind
+      all
+      install_github_second_ctrl
+      show_config
+      exit
+      ;;
+    -G | --start-user-gosmee) # Start gosmee locally for user $USER
+      start_user_gosmee gosmee
+      exit
+      ;;
+    -F | --all-but-forge) # Everything but forgejo
+      INSTALL_FORGE=false
+      all
+      exit
+      ;;
+    -t | --install-tekton) # Install Tekton
+      install_tekton
+      exit
+      ;;
+    -a | --all) # Install everything
+      install_kind
+      all
+      show_config
+      exit
+      ;;
+    -A | --all-but-kind) # Install everything but kind
+      all
+      exit
+      ;;
+    -c | --deploy-component) # Install a specific component
+      install_pac "$2"
+      shift
+      exit
+      ;;
+    -p | --install-paac) # Deploy and configure PAC
+      install_pac
+      configure_pac
+      configure_pac_custom_certs
+      patch_pac_service_nodeport
+      exit
+      ;;
+    -k | --kind) # Install Kind
+      install_kind
+      sync_kubeconfig
+      exit
+      ;;
+    -i | --menu | --interactive) # Force interactive component selection menu
+      FORCE_INTERACTIVE="true"
+      ;;
+    -R | --reset-preferences) # Reset saved component preferences
+      reset_preferences
+      exit 0
+      ;;
+    -h | --help) # Show help
+      help
+      exit 0
       ;;
     --setup-forgejo-sample) # Setup sample Forgejo user and repo
       setup_forgejo_sample
@@ -993,33 +1059,8 @@ function parse_args() {
       install_github_second_ctrl
       exit
       ;;
-    -s | --sync-kubeconfig) # Sync kubeconfig
-      sync_kubeconfig
-      exit
-      ;;
-    -S | --github-second-ctrl) # Deploy second controller for github
-      install_github_second_ctrl
-      exit
-      ;;
-    -H | --all-github-second-no-forgejo) # Install everything but forgejo
-      INSTALL_FORGE=false
-      install_kind
-      all
-      install_github_second_ctrl
-      show_config
-      exit
-      ;;
     --show-config) # Show configuration
       show_config
-      exit
-      ;;
-    -G | --start-user-gosmee) # Start gosmee locally for user $USER
-      start_user_gosmee gosmee
-      exit
-      ;;
-    -F | --all-but-forge) # Everything but forgejo
-      INSTALL_FORGE=false
-      all
       exit
       ;;
     --install-registry) # Install docker registry
@@ -1034,10 +1075,6 @@ function parse_args() {
       install_dashboard
       exit
       ;;
-    -t | --install-tekton) # Install Tekton
-      install_tekton
-      exit
-      ;;
     --install-triggers) # Install Tekton triggers
       install_triggers
       exit
@@ -1050,16 +1087,6 @@ function parse_args() {
       install_nginx
       exit
       ;;
-    -a | --all) # Install everything
-      install_kind
-      all
-      show_config
-      exit
-      ;;
-    -A | --all-but-kind) # Install everything but kind
-      all
-      exit
-      ;;
     --all-to-tekton) # Install everything up to Tekton
       install_kind
       sync_kubeconfig
@@ -1067,11 +1094,6 @@ function parse_args() {
       install_registry
       install_tekton
       show_config
-      exit
-      ;;
-    -c | --deploy-component) # Install a specific component
-      install_pac "$2"
-      shift
       exit
       ;;
     --configure-pac) # Configure PAC
@@ -1102,18 +1124,6 @@ function parse_args() {
       fi
       exit
       ;;
-    -p | --install-paac) # Deploy and configure PAC
-      install_pac
-      configure_pac
-      configure_pac_custom_certs
-      patch_pac_service_nodeport
-      exit
-      ;;
-    -k | --kind) # Install Kind
-      install_kind
-      sync_kubeconfig
-      exit
-      ;;
     --stop-kind) # Stop Kind
       stop_kind
       exit
@@ -1124,20 +1134,9 @@ function parse_args() {
       sync_kubeconfig
       exit
       ;;
-    -i | --menu | --interactive) # Force interactive component selection menu
-      FORCE_INTERACTIVE="true"
-      ;;
     --ci) # Non-interactive CI mode (skips gum, uses TLS with minica)
       CI_MODE="true"
       FORCE_INTERACTIVE="false"
-      ;;
-    -R | --reset-preferences) # Reset saved component preferences
-      reset_preferences
-      exit 0
-      ;;
-    -h | --help) # Show help
-      help
-      exit 0
       ;;
     --)
       shift
