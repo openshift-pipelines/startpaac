@@ -407,7 +407,12 @@ patch_configmap() {
     --type merge "${configmap}"
 
   kubectl patch configmap pac-config-logging -n "${target_ns}" \
-    --type json -p '[{"op": "replace", "path": "/data/loglevel.pipelinesascode", "value":"debug"}]'
+    --type merge \
+    -p '{"data":{
+      "loglevel.pac-watcher":"debug",
+      "loglevel.pipelines-as-code-webhook":"debug",
+      "loglevel.pipelinesascode":"debug"
+    }}'
 }
 
 configure_pac() {
